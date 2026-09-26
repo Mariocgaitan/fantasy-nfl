@@ -20,8 +20,8 @@ Recomendar cada semana alineación, agencia libre e intercambios para BanKAI
 
 | Fase | Fecha límite | Contenido |
 |---|---|---|
-| 0. Provisional mínima | martes 2026-09-29 19:00 | Ingesta ESPN + nflverse, instantáneas, alineación con proyección de ESPN + regla (a), agencia libre (pedir/soltar, ganando rol), página en GitHub Pages **sin botones**, correo por ntfy. Marcada "sin validar". |
-| 1. Provisional completa | martes 2026-10-06 | Intercambios, modelo como segunda opinión, lista de reemplazos condicionales (Mario los ejecuta a mano). |
+| 0. Provisional mínima | martes 2026-09-29 19:00 | Ingesta ESPN + nflverse, instantáneas, alineación con proyección de ESPN + reglas (a) y (b), agencia libre (pedir/soltar, ganando rol), página en GitHub Pages **sin botones**, correo por ntfy. Marcada "sin validar". La regla (b) se adelanta a esta fase porque el reporte del domingo 2026-10-04 llega antes que la fase 1 y sale casi gratis de la alineación. |
+| 1. Provisional completa | martes 2026-10-06 | Intercambios y modelo como segunda opinión. |
 | 2. Ejecución autorizada | semanas 6–7 | Botones → issue de GitHub → escritura en ESPN; vigilante de inactivos. |
 | 3. Modelo serio | en paralelo, meta semana 8 | Backtest walk-forward (ajuste 2024, corrida única en 2025 sellado). Si pasa, el modelo manda. |
 
@@ -59,12 +59,24 @@ tests/
    enfrentamientos, transacciones), jugadores (proyección semanal y del resto
    de la temporada, lesiones, dueño %, ADP, comentarios) y calendario NFL, y
    de nflverse estadísticas semanales y snaps.
+   Las proyecciones semanales (semanas 1–18) salen de
+   `leaguedefaults/3?view=kona_player_info` con `filterIds` en lotes de 50:
+   el endpoint de la liga solo da la semana en curso. Puntuación PPR estándar,
+   igual que la liga.
 4. `almacen` guarda la instantánea en la rama `datos`:
-   `2026/semNN/AAAA-MM-DDTHH-MM/*.parquet` (hora de Sídney).
-5. `proyeccion` produce por jugador y semana: proyección que manda (ESPN en
+   `instantaneas/2026/semNN/AAAA-MM-DDTHH-MM/*.json.gz|*.csv.gz` (hora de
+   Sídney). Se guardan las **respuestas crudas comprimidas**, no tablas ya
+   procesadas: así un cambio en los parsers se puede volver a correr sobre
+   la historia completa. La misma rama sirve la página por GitHub Pages
+   (`index.html`, `reportes/`).
+5. **Semana objetivo**: la `scoringPeriodId` de ESPN, salvo que ya haya
+   empezado el último partido de esa semana; en ese caso es la siguiente (el
+   reporte del martes es de la semana que viene aunque ESPN no haya
+   avanzado).
+6. `proyeccion` produce por jugador y semana: proyección que manda (ESPN en
    provisional), proyección del modelo y probabilidad de jugar.
-6. `decision` produce recomendaciones.
-7. `reporte` genera el HTML (publicado en GitHub Pages) y el correo resumen.
+7. `decision` produce recomendaciones.
+8. `reporte` genera el HTML (publicado en GitHub Pages) y el correo resumen.
 
 La misma orden corre local y en Actions. Con `--instantanea <ruta>` corre sin
 red a partir de una instantánea guardada: así se reproduce cualquier reporte.
@@ -94,8 +106,10 @@ todas, incluidas las de playoffs (15–17).
 
 ### 4.1 Alineación
 
-- **Óptima exacta**: enumerar asignaciones válidas de los 7 lugares (QB, RB×2,
-  WR×2, TE, FLEX RB/WR/TE) y elegir la de mayor puntaje esperado. Los
+- **Óptima exacta** para los 7 lugares (QB, RB×2, WR×2, TE, FLEX RB/WR/TE):
+  llenar cada posición con sus mejores y el FLEX con el mejor sobrante. Con
+  cupos por posición y un solo comodín esto es exacto (argumento de
+  intercambio); una prueba lo compara contra la enumeración completa. Los
   jugadores bloqueados (partido empezado) quedan fijos.
 - **Puntaje esperado** = proyección × P(jugar). P(jugar) por estado:
   ACTIVE 1.0, QUESTIONABLE 0.75, DOUBTFUL 0.25, OUT/IR 0. Valores iniciales
@@ -111,7 +125,9 @@ todas, incluidas las de playoffs (15–17).
 - Un candidato solo suma **esta semana** si entra a la alineación óptima.
 - **Valor** = suma, en las semanas restantes, de la mejora de la alineación
   óptima de Mario al tenerlo (esto captura los descansos), más un **seguro**
-  cuando cubre una posición sin respaldo en las próximas 3 semanas (hoy: QB).
+  cuando cubre una posición sin respaldo en las próximas 3 semanas: solo QB y
+  TE, porque RB y WR ya se cubren entre sí por el FLEX (hoy: QB). El seguro
+  vale 0.15 × sus puntos proyectados en esas 3 semanas (sin validar).
 - **Ganando rol**: comparar snaps %, share de targets y acarreos de las últimas
   2 semanas contra las anteriores (nflverse), y contra el cambio de dueño % en
   ESPN. Se marcan los que suben de rol sin que suba su dueño %.
