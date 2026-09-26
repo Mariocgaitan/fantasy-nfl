@@ -1,5 +1,10 @@
 """Lectura de la API pública de ESPN fantasy: descarga y parsers."""
 
+import json
+import time
+import urllib.error
+import urllib.request
+
 import pandas as pd
 
 from fantasy.esquemas import (
@@ -116,3 +121,50 @@ def parsear_calendario(calendario: dict) -> pd.DataFrame:
                     "rival_nfl_id": g["awayProTeamId"] if local else g["homeProTeamId"],
                 })
     return validar(pd.DataFrame(filas, columns=PARTIDOS), PARTIDOS, "calendario")
+
+
+LECTURA = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons"
+AGENTE = "fantasy-nfl (github.com/Mariocgaitan/fantasy-nfl)"
+LOTE = 50
+
+
+def obtener_json(url, filtro=None, *, abrir=urllib.request.urlopen, intentos=3, espera=2.0,
+                 dormir=time.sleep) -> dict:
+    headers = {"User-Agent": AGENTE}
+    if filtro is not None:
+        headers["X-Fantasy-Filter"] = json.dumps(filtro)
+    ultimo: Exception | None = None
+    for i in range(intentos):
+        try:
+            with abrir(urllib.request.Request(url, headers=headers), timeout=30) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if 400 <= e.code < 500 and e.code != 429:
+                raise DatosInvalidos(f"ESPN respondió {e.code} en {url}") from e
+            ultimo = e
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+            ultimo = e
+        if i < intentos - 1:
+            dormir(espera * 2**i)
+    raise DatosInvalidos(f"ESPN no respondió tras {intentos} intentos: {ultimo}")
+
+
+def bajar_espn(temporada: int, liga_id: int, *, get=obtener_json) -> dict[str, dict]:
+    base = f"{LECTURA}/{temporada}/segments/0"
+    liga = get(f"{base}/leagues/{liga_id}?view=mTeam&view=mRoster&view=mSettings&view=mMatchup")
+    validar_liga(liga)
+    calendario = get(f"{LECTURA}/{temporada}?view=proTeamSchedules_wl")
+    libres = get(f"{base}/leagues/{liga_id}?view=kona_player_info", {"players": {
+        "filterStatus": {"value": ["FREEAGENT", "WAIVERS"]},
+        "filterSlotIds": {"value": [0, 2, 4, 6]},
+        "limit": 150,
+        "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
+    }})
+    ids = sorted({e["playerId"] for t in liga["teams"] for e in t["roster"]["entries"]}
+                 | {pe["id"] for pe in libres.get("players", [])})
+    jugadores: list[dict] = []
+    for i in range(0, len(ids), LOTE):
+        filtro = {"players": {"filterIds": {"value": ids[i:i + LOTE]}}}
+        jugadores += get(f"{base}/leaguedefaults/3?view=kona_player_info", filtro)["players"]
+    return {"liga": liga, "calendario": calendario, "agentes_libres": libres,
+            "proyecciones": {"players": jugadores}}
