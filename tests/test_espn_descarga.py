@@ -73,3 +73,13 @@ def test_bajar_espn_pide_proyecciones_en_lotes(fixture_dir):
     assert all(len(f["players"]["filterIds"]["value"]) <= 50 for f in lotes)
     assert len(crudos["proyecciones"]["players"]) == total
     assert set(crudos) == {"liga", "calendario", "agentes_libres", "proyecciones"}
+
+
+def test_corte_de_conexion_al_leer_se_reintenta_y_termina_en_datos_invalidos():
+    # Revisión 1: ConnectionResetError / IncompleteRead no son URLError.
+    import http.client
+
+    errores = [ConnectionResetError("reset"), http.client.IncompleteRead(b""),
+               ConnectionResetError("reset")]
+    with pytest.raises(DatosInvalidos, match="3 intentos"):
+        espn.obtener_json("https://x", abrir=abridor(errores, []), dormir=lambda s: None)

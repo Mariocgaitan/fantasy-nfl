@@ -1,5 +1,6 @@
 """Uso semanal por jugador (snaps, targets, acarreos) desde nflverse."""
 
+import http.client
 import io
 import time
 import urllib.error
@@ -22,6 +23,11 @@ COLUMNAS = {
               "offense_snaps", "offense_pct"],
     "jugadores": ["gsis_id", "pfr_id", "espn_id", "display_name", "position"],
 }
+REQUERIDAS = {  # lo que usa uso_semanal
+    "semanal": ["player_id", "season_type", "week", "targets", "carries"],
+    "snaps": ["week", "pfr_player_id", "offense_pct"],
+    "jugadores": ["gsis_id", "pfr_id", "espn_id"],
+}
 POSICIONES = ["QB", "RB", "WR", "TE"]
 
 
@@ -31,7 +37,7 @@ def _leer_csv(url: str, abrir, intentos: int, espera: float, dormir) -> pd.DataF
         try:
             with abrir(url, timeout=120) as r:
                 return pd.read_csv(io.BytesIO(r.read()), low_memory=False)
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        except (OSError, http.client.HTTPException) as e:
             ultimo = e
         if i < intentos - 1:
             dormir(espera * 2**i)
@@ -47,6 +53,9 @@ def bajar_nflverse(temporada: int, *, abrir=urllib.request.urlopen, intentos: in
             df = _leer_csv(url, abrir, intentos, espera, dormir)
         except pd.errors.ParserError as e:
             raise DatosInvalidos(f"nflverse: {nombre} no es un CSV válido: {e}") from e
+        faltan = [c for c in REQUERIDAS[nombre] if c not in df.columns]
+        if faltan:
+            raise DatosInvalidos(f"nflverse: {nombre} ya no trae las columnas {faltan}")
         df = df[[c for c in COLUMNAS[nombre] if c in df.columns]]
         if "position" in df.columns:
             df = df[df["position"].isin(POSICIONES)]
@@ -64,7 +73,9 @@ def uso_semanal(semanal: pd.DataFrame, snaps: pd.DataFrame,
     s = s.groupby(["espn_id", "week"], as_index=False)[["targets", "carries"]].sum()
     n = snaps.merge(ids[["pfr_id", "espn_id"]], left_on="pfr_player_id", right_on="pfr_id")
     n = n.groupby(["espn_id", "week"], as_index=False)["offense_pct"].max()
-    u = s.merge(n, on=["espn_id", "week"], how="outer").fillna(0)
+    u = s.merge(n, on=["espn_id", "week"], how="outer")
+    # Sin fila de snaps no es 0% de snaps: se deja vacío para no inventar subidas de rol.
+    u[["targets", "carries"]] = u[["targets", "carries"]].fillna(0)
     u = u.rename(columns={"espn_id": "jugador_id", "week": "semana",
                           "offense_pct": "snaps_pct", "carries": "acarreos"})
     u["jugador_id"] = u["jugador_id"].astype("int64")

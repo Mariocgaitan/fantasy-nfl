@@ -110,3 +110,11 @@ def test_ganando_rol_sin_historia_devuelve_vacio():
     uso = pd.DataFrame({"jugador_id": [10], "semana": [1], "snaps_pct": [0.5],
                         "targets": [3], "acarreos": [0]})
     assert al.ganando_rol(uso, _jug([{"jugador_id": 10, "nombre": "X", "pos": "WR"}])).empty
+
+
+def test_ganando_rol_ignora_semanas_sin_dato_de_snaps():
+    uso = pd.DataFrame({"jugador_id": [10, 10, 10], "semana": [1, 2, 3],
+                        "snaps_pct": [float("nan"), 0.70, 0.72],
+                        "targets": [5, 5, 5], "acarreos": [0, 0, 0]})
+    jug = _jug([{"jugador_id": 10, "nombre": "SinDato", "pos": "WR"}])
+    assert al.ganando_rol(uso, jug).empty

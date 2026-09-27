@@ -80,3 +80,18 @@ def test_calendario(crudos):
     gb = c[(c.equipo_nfl_id == 9) & (c.semana == 3)].iloc[0]
     assert gb.inicio_utc == pd.Timestamp("2026-09-25 00:15", tz="UTC")
     assert c[(c.equipo_nfl_id == 18) & (c.semana == 8)].empty  # NO descansa en la 8
+
+
+def test_proyecciones_sin_duplicados(crudos):
+    # Revisión 1: ESPN devolvió al jugador 4430802 dos veces en un lote.
+    pr = espn.parsear_proyecciones(crudos["proyecciones"], 2026)
+    assert not pr.duplicated(["jugador_id", "semana"]).any()
+
+
+def test_falta_un_jugador_de_plantilla_en_proyecciones_falla(crudos):
+    # Revisión 1: nunca decidir en silencio sin un titular.
+    proy = dict(crudos["proyecciones"])
+    mio = crudos["liga"]["teams"][4]["roster"]["entries"][0]["playerId"]
+    proy["players"] = [p for p in proy["players"] if p["id"] != mio]
+    with pytest.raises(DatosInvalidos, match="sin proyección"):
+        espn.parsear_jugadores(proy, crudos["liga"], crudos["agentes_libres"])

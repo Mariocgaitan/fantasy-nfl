@@ -1,5 +1,6 @@
 """Lectura de la API pública de ESPN fantasy: descarga y parsers."""
 
+import http.client
 import json
 import time
 import urllib.error
@@ -60,7 +61,7 @@ def parsear_proyecciones(proyecciones: dict, temporada: int) -> pd.DataFrame:
         if s.get("seasonId") == temporada and s.get("statSourceId") == 1
         and s.get("statSplitTypeId") == 1 and s.get("scoringPeriodId", 0) > 0
     ]
-    df = pd.DataFrame(filas, columns=PROYECCIONES)
+    df = pd.DataFrame(filas, columns=PROYECCIONES).drop_duplicates(["jugador_id", "semana"])
     if df.empty:
         raise DatosInvalidos("proyecciones: ESPN no devolvió proyecciones semanales")
     return validar(df, PROYECCIONES, "proyecciones")
@@ -104,6 +105,10 @@ def parsear_jugadores(proyecciones: dict, liga: dict, libres: dict) -> pd.DataFr
             "dueno_pct": pct, "dueno_cambio": cambio,
         })
     df = pd.DataFrame(filas, columns=JUGADORES).drop_duplicates("jugador_id")
+    faltan = set(dueno) - set(df.jugador_id)
+    if faltan:
+        raise DatosInvalidos(f"jugadores: {len(faltan)} de plantilla sin proyección: "
+                             f"{sorted(faltan)[:5]}")
     return validar(df, JUGADORES, "jugadores")
 
 
@@ -142,7 +147,7 @@ def obtener_json(url, filtro=None, *, abrir=urllib.request.urlopen, intentos=3, 
             if 400 <= e.code < 500 and e.code != 429:
                 raise DatosInvalidos(f"ESPN respondió {e.code} en {url}") from e
             ultimo = e
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        except (OSError, http.client.HTTPException, json.JSONDecodeError) as e:
             ultimo = e
         if i < intentos - 1:
             dormir(espera * 2**i)
