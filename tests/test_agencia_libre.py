@@ -118,3 +118,27 @@ def test_ganando_rol_ignora_semanas_sin_dato_de_snaps():
                         "targets": [5, 5, 5], "acarreos": [0, 0, 0]})
     jug = _jug([{"jugador_id": 10, "nombre": "SinDato", "pos": "WR"}])
     assert al.ganando_rol(uso, jug).empty
+
+
+def test_valor_rapido_coincide_con_optima(fixture_dir):
+    # La valoración usa un cálculo en Python puro; tiene que dar lo mismo que `optima`.
+    import random
+
+    from fantasy.decision.alineacion import optima
+
+    c = {n: json.loads((fixture_dir / f"{n}.json").read_text(encoding="utf-8"))
+         for n in ("liga", "calendario", "agentes_libres", "proyecciones")}
+    j = espn.parsear_jugadores(c["proyecciones"], c["liga"], c["agentes_libres"])
+    p = espn.parsear_plantillas(c["liga"])
+    mia = p[p.equipo_id == 5]
+    tablas = al.tablas_por_semana(
+        j, espn.parsear_proyecciones(c["proyecciones"], 2026),
+        espn.parsear_calendario(c["calendario"]), mia, 3,
+        pd.Timestamp("2026-09-25 02:26", tz="UTC"))
+    rapido = al.Valuador(tablas)
+    azar = random.Random(7)
+    todos = sorted(j.jugador_id)
+    for _ in range(40):
+        ids = set(azar.sample(todos, 14)) | set(azar.sample(sorted(mia.jugador_id), 5))
+        esperado = sum(optima(t[t.jugador_id.isin(ids)]).esperado for t in tablas.values())
+        assert rapido.valor(ids) == pytest.approx(esperado)

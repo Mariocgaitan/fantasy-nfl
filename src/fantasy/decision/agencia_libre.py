@@ -3,7 +3,7 @@
 import pandas as pd
 
 from fantasy.config import SEMANA_FINAL
-from fantasy.decision.alineacion import CUPOS, optima
+from fantasy.decision.alineacion import CUPOS, FLEX_POS, TITULARES
 from fantasy.proyeccion.espn import tabla_semana
 
 SEGURO = 0.15          # fracción de sus puntos que vale un respaldo (sin validar)
@@ -30,8 +30,57 @@ def tablas_por_semana(jugadores, proyecciones, partidos, plantilla_mia, semana, 
     return tablas
 
 
+class Valuador:
+    """Lo mismo que sumar `optima(...).esperado` por semana, en Python puro: la búsqueda de
+    agencia libre evalúa miles de plantillas y con pandas tardaba minutos."""
+
+    def __init__(self, tablas: dict[int, pd.DataFrame]):
+        self._semanas = [
+            {int(r.jugador_id): (r.pos, float(r.esperado), bool(r.bloqueado), r.slot)
+             for r in t[["jugador_id", "pos", "esperado", "bloqueado", "slot"]].itertuples()}
+            for t in tablas.values()
+        ]
+
+    def valor(self, ids: set[int]) -> float:
+        return sum(self._semana(filas, ids) for filas in self._semanas)
+
+    @staticmethod
+    def _semana(filas: dict, ids: set[int]) -> float:
+        total = 0.0
+        ocupados = dict.fromkeys(TITULARES, 0)
+        libres = []
+        for j in ids:
+            f = filas.get(j)
+            if f is None:
+                continue
+            pos, esperado, bloqueado, slot = f
+            if bloqueado:
+                if slot in ocupados:
+                    ocupados[slot] += 1
+                    total += esperado
+            else:
+                libres.append((esperado, pos))
+        libres.sort(key=lambda x: -x[0])
+        usados = [False] * len(libres)
+        for pos, n in CUPOS.items():
+            faltan = n - ocupados[pos]
+            for i, (esperado, p) in enumerate(libres):
+                if faltan <= 0:
+                    break
+                if p == pos and not usados[i]:
+                    usados[i] = True
+                    total += esperado
+                    faltan -= 1
+        if ocupados["FLEX"] == 0:
+            for i, (esperado, p) in enumerate(libres):
+                if p in FLEX_POS and not usados[i]:
+                    total += esperado
+                    break
+        return total
+
+
 def valor_plantilla(ids: set[int], tablas: dict[int, pd.DataFrame]) -> float:
-    return sum(optima(t[t.jugador_id.isin(ids)]).esperado for t in tablas.values())
+    return Valuador(tablas).valor(ids)
 
 
 def _seguro(cand: pd.Series, ids: set[int], jugadores: pd.DataFrame,
@@ -59,12 +108,13 @@ def recomendar(jugadores, tablas, mis_ids, semana, *, max_candidatos=30, max_sug
     t0 = tablas[semana]
     bloqueados = set(t0.loc[t0.bloqueado & t0.jugador_id.isin(mis_ids), "jugador_id"])
     soltables = [j for j in mis_ids if j not in bloqueados]
-    base = valor_plantilla(mis_ids, tablas)
+    valuador = Valuador(tablas)
+    base = valuador.valor(mis_ids)
     filas = []
     for _, cand in candidatos.iterrows():
         for s in soltables:
             nuevos = (mis_ids - {s}) | {int(cand.jugador_id)}
-            ganancia = valor_plantilla(nuevos, tablas) - base
+            ganancia = valuador.valor(nuevos) - base
             ganancia += _seguro(cand, mis_ids - {s}, jugadores, tablas, semana)
             ganancia = round(ganancia, 6)  # que el ruido de coma flotante no rompa empates
             filas.append({"pedir": int(cand.jugador_id), "soltar": int(s),
