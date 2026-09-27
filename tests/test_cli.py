@@ -69,3 +69,26 @@ def test_temporada_terminada_sale_limpio(fixture_dir, tmp_path, monkeypatch):
     codigo = main(_args(fixture_dir, tmp_path), entorno=ENTORNO,
                   enviar_fn=lambda *a, **k: enviados.append(a))
     assert codigo == 0 and enviados == []
+
+
+def test_si_falla_el_correo_el_reporte_igual_se_publica(fixture_dir, tmp_path):
+    # Revisión final: ntfy caído no debe tumbar la publicación.
+    def falla(*a, **k):
+        raise OSError("ntfy no responde")
+
+    codigo = main(_args(fixture_dir, tmp_path), entorno=ENTORNO, enviar_fn=falla)
+    assert codigo == 0
+    assert (tmp_path / "reportes" / "2026-sem03-viernes.html").exists()
+
+
+def test_error_inesperado_avisa_y_sale_con_error(fixture_dir, tmp_path, monkeypatch):
+    # Revisión final: cualquier error, no solo DatosInvalidos, tiene que avisar.
+    def roto(*a, **k):
+        raise KeyError("columna que ESPN renombró")
+
+    monkeypatch.setattr("fantasy.cli.armar", roto)
+    enviados = []
+    codigo = main(_args(fixture_dir, tmp_path), entorno=ENTORNO,
+                  enviar_fn=lambda *a, **k: enviados.append(a))
+    assert codigo == 1
+    assert "NO generado" in enviados[0][2]

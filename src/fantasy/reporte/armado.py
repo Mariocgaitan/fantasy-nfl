@@ -12,6 +12,14 @@ from fantasy.ingesta import espn, nflverse
 
 DIAS = {"martes": "del martes", "viernes": "del viernes", "domingo": "del domingo"}
 DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
+ESTADOS = {
+    "ACTIVE": "sano", "QUESTIONABLE": "en duda", "DOUBTFUL": "dudoso", "OUT": "fuera",
+    "INJURY_RESERVE": "lesionado (IR)", "SUSPENSION": "suspendido", "DAY_TO_DAY": "día a día",
+}
+
+
+def estado(lesion: str) -> str:
+    return ESTADOS.get(lesion, lesion.lower())
 
 
 class TemporadaTerminada(Exception):
@@ -55,6 +63,8 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     alineacion = [{
         "slot": s, "nombre": idx.loc[j, "nombre"], "pos": idx.loc[j, "pos"],
         "proy": round(float(idx.loc[j, "proy"]), 1), "lesion": idx.loc[j, "lesion"],
+        "estado": ("descansa" if pd.isna(idx.loc[j, "inicio_utc"])
+                   else estado(idx.loc[j, "lesion"])),
         "bloqueado": bool(idx.loc[j, "bloqueado"]),
     } for s, j in al.slots]
     actuales = set(tm.loc[tm.slot.isin(TITULARES), "jugador_id"])
@@ -74,6 +84,7 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         "suplente": idx.loc[r.suplente, "nombre"] if r.suplente else None,
         "hora_suplente": hora(r.suplente) if r.suplente else None,
         "lesion_suplente": idx.loc[r.suplente, "lesion"] if r.suplente else None,
+        "estado_suplente": estado(idx.loc[r.suplente, "lesion"]) if r.suplente else None,
     } for r in reemplazos(al, tm)]
 
     por_id = jugadores.set_index("jugador_id")
@@ -81,6 +92,7 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     agencia = [{
         "pedir": nombres[x.pedir], "pos": x.pos, "soltar": nombres[x.soltar],
         "lesion": por_id.loc[x.pedir, "lesion"],
+        "estado": estado(por_id.loc[x.pedir, "lesion"]),
         "ganancia": round(float(x.ganancia), 1),
     } for x in agencia_libre.recomendar(jugadores, tablas, mis_ids, semana).itertuples()]
 

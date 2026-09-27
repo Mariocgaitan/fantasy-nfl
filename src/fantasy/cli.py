@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -57,10 +58,11 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     except TemporadaTerminada as e:
         print(f"Sin reporte: {e}.")
         return 0
-    except DatosInvalidos as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 — cualquier falla avisa; nunca en silencio
+        traceback.print_exc()
         if avisar:
-            enviar_fn(tema, destino, "Fantasy: reporte NO generado", str(e), None)
+            _avisar(enviar_fn, tema, destino, "Fantasy: reporte NO generado",
+                    f"{type(e).__name__}: {e}", None)
         return 1
 
     nombre = f"{TEMPORADA}-sem{reporte.semana:02d}-{tipo}.html"
@@ -78,8 +80,16 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     if avisar:
         enlace = entorno.get("PAGES_URL", "").rstrip("/") + f"/reportes/{nombre}"
         titulo = f"Fantasy · semana {reporte.semana} · {tipo}"
-        enviar_fn(tema, destino, titulo, correo.resumen(reporte), enlace)
+        _avisar(enviar_fn, tema, destino, titulo, correo.resumen(reporte), enlace)
     return 0
+
+
+def _avisar(enviar_fn, tema, destino, titulo, cuerpo, enlace) -> None:
+    """El correo es un extra: si ntfy falla, el reporte igual se publica."""
+    try:
+        enviar_fn(tema, destino, titulo, cuerpo, enlace)
+    except Exception as e:  # noqa: BLE001 — el correo nunca bloquea la publicación
+        print(f"AVISO: no se pudo mandar el correo: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

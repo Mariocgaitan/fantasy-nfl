@@ -72,14 +72,14 @@ def test_agencia_libre_muestra_la_lesion(fixture_dir):
     assert all("lesion" in a for a in r.agencia)
     html = generar_html(r)
     fuera = [a for a in r.agencia if a["lesion"] != "ACTIVE"]
-    assert all(a["lesion"] in html for a in fuera)
+    assert all(a["estado"] in html for a in fuera)
 
 
 def test_suplente_muestra_su_lesion(fixture_dir):
     r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
     cook = next(x for x in r.reemplazos if x["titular"] == "James Cook III")
     assert cook["lesion_suplente"] == "QUESTIONABLE"
-    assert "QUESTIONABLE" in generar_html(r)
+    assert "en duda" in generar_html(r)
 
 
 def test_temporada_terminada_no_arma_reporte(fixture_dir):
@@ -90,3 +90,20 @@ def test_temporada_terminada_no_arma_reporte(fixture_dir):
         crudos = cargar(fixture_dir)
         crudos["liga"] = dict(crudos["liga"], scoringPeriodId=17)
         armar(crudos, pd.Timestamp("2027-01-12 09:00", tz="UTC"), "martes", 5)
+
+
+def test_correo_dice_si_el_sugerido_esta_lesionado(fixture_dir):
+    r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
+    r.agencia[0]["lesion"] = "OUT"
+    assert "(fuera" in correo.resumen(r)
+
+
+def test_estados_en_espanol_y_descanso_visible(fixture_dir):
+    r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
+    html = generar_html(r)
+    assert "QUESTIONABLE" not in html and "ACTIVE" not in html
+    assert "en duda" in html  # Coker, suplente de Cook
+    # Un titular sin partido esa semana se marca como "descansa".
+    r.alineacion[0]["estado"] = "descansa"
+    assert "descansa" in generar_html(r)
+    assert all("estado" in f for f in armar(cargar(fixture_dir), AHORA, "viernes", 5).alineacion)

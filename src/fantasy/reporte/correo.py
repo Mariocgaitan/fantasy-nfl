@@ -3,7 +3,7 @@
 import urllib.parse
 import urllib.request
 
-from fantasy.reporte.armado import DIAS, Reporte
+from fantasy.reporte.armado import DIAS, Reporte, estado
 
 
 def resumen(r: Reporte) -> str:
@@ -11,7 +11,9 @@ def resumen(r: Reporte) -> str:
     lineas.append("Alineación: " + (" · ".join(r.cambios) if r.cambios else "sin cambios"))
     if r.agencia:
         a = r.agencia[0]
-        lineas.append(f"Agencia libre: pedir {a['pedir']}, soltar {a['soltar']} (+{a['ganancia']})")
+        nota = f" ({estado(a['lesion'])})" if a.get("lesion", "ACTIVE") != "ACTIVE" else ""
+        lineas.append(f"Agencia libre: pedir {a['pedir']}{nota}, soltar {a['soltar']} "
+                      f"(+{a['ganancia']})")
     sin = [x["titular"] for x in r.reemplazos if x["suplente"] is None]
     if sin:
         lineas.append("Sin respaldo útil: " + ", ".join(sin))

@@ -31,7 +31,7 @@
   <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th><th>Estado</th></tr>
   {% for f in alineacion %}
   <tr><td>{{ f.slot }}</td><td>{{ f.nombre }} <small>{{ f.pos }}</small>{% if f.bloqueado %} 🔒{% endif %}</td>
-      <td class="num">{{ f.proy }}</td><td>{{ f.lesion }}</td></tr>
+      <td class="num">{{ f.proy }}</td><td>{{ f.estado }}</td></tr>
   {% endfor %}
 </table>
 
@@ -40,7 +40,7 @@
   <tr><th>Titular</th><th>Juega</th><th>Entra</th></tr>
   {% for r in reemplazos %}
   <tr><td>{{ r.titular }}</td><td>{{ r.hora }}</td>
-      <td>{% if r.suplente %}{{ r.suplente }} <small>{{ r.hora_suplente }}</small>{% if r.lesion_suplente != "ACTIVE" %} <strong>{{ r.lesion_suplente }}</strong>{% endif %}{% else %}<span class="suave">sin respaldo útil</span>{% endif %}</td></tr>
+      <td>{% if r.suplente %}{{ r.suplente }} <small>{{ r.hora_suplente }}</small>{% if r.lesion_suplente != "ACTIVE" %} <strong>{{ r.estado_suplente }}</strong>{% endif %}{% else %}<span class="suave">sin respaldo útil</span>{% endif %}</td></tr>
   {% endfor %}
 </table>
 
@@ -49,7 +49,7 @@
 <table>
   <tr><th>Pedir</th><th>Soltar</th><th class="num">Ganancia</th></tr>
   {% for a in agencia %}
-  <tr><td>{{ a.pedir }} <small>{{ a.pos }}</small>{% if a.lesion != "ACTIVE" %} <strong>{{ a.lesion }}</strong>{% endif %}</td><td>{{ a.soltar }}</td><td class="num">+{{ a.ganancia }}</td></tr>
+  <tr><td>{{ a.pedir }} <small>{{ a.pos }}</small>{% if a.lesion != "ACTIVE" %} <strong>{{ a.estado }}</strong>{% endif %}</td><td>{{ a.soltar }}</td><td class="num">+{{ a.ganancia }}</td></tr>
   {% endfor %}
 </table>
 <p class="suave">Ganancia: puntos proyectados extra de aquí a la semana 17.</p>
