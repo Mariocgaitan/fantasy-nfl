@@ -56,3 +56,16 @@ def test_datos_invalidos_avisan_y_salen_con_error(fixture_dir, tmp_path):
     assert codigo == 1
     assert "NO generado" in enviados[0][2]
     assert not (tmp_path / "out" / "reportes").exists()
+
+
+def test_temporada_terminada_sale_limpio(fixture_dir, tmp_path, monkeypatch):
+    from fantasy.reporte import armado
+
+    def terminada(*a, **k):
+        raise armado.TemporadaTerminada("la temporada terminó")
+
+    monkeypatch.setattr("fantasy.cli.armar", terminada)
+    enviados = []
+    codigo = main(_args(fixture_dir, tmp_path), entorno=ENTORNO,
+                  enviar_fn=lambda *a, **k: enviados.append(a))
+    assert codigo == 0 and enviados == []

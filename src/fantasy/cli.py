@@ -15,7 +15,7 @@ from fantasy.horario import ZONA, reporte_que_toca
 from fantasy.ingesta.espn import bajar_espn
 from fantasy.ingesta.nflverse import bajar_nflverse
 from fantasy.reporte import correo
-from fantasy.reporte.armado import armar
+from fantasy.reporte.armado import TemporadaTerminada, armar
 from fantasy.reporte.html import generar_html
 
 
@@ -54,6 +54,9 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             except DatosInvalidos as e:
                 avisos.append(f"nflverse no disponible: {e}")
         reporte = armar(crudos, pd.Timestamp(ahora), tipo, EQUIPO_ID, avisos)
+    except TemporadaTerminada as e:
+        print(f"Sin reporte: {e}.")
+        return 0
     except DatosInvalidos as e:
         print(f"ERROR: {e}", file=sys.stderr)
         if avisar:

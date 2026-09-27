@@ -142,3 +142,17 @@ def test_valor_rapido_coincide_con_optima(fixture_dir):
         ids = set(azar.sample(todos, 14)) | set(azar.sample(sorted(mia.jugador_id), 5))
         esperado = sum(optima(t[t.jugador_id.isin(ids)]).esperado for t in tablas.values())
         assert rapido.valor(ids) == pytest.approx(esperado)
+
+
+def test_bloqueos_viejos_de_espn_no_congelan_la_semana_siguiente(fixture_dir):
+    # Revisión 2: el martes ESPN aún marca bloqueada la semana que terminó.
+    c = {n: json.loads((fixture_dir / f"{n}.json").read_text(encoding="utf-8"))
+         for n in ("liga", "calendario", "agentes_libres", "proyecciones")}
+    j = espn.parsear_jugadores(c["proyecciones"], c["liga"], c["agentes_libres"])
+    p = espn.parsear_plantillas(c["liga"])
+    mia = p[p.equipo_id == 5].assign(bloqueado=True)
+    tablas = al.tablas_por_semana(
+        j, espn.parsear_proyecciones(c["proyecciones"], 2026),
+        espn.parsear_calendario(c["calendario"]), mia, 4,
+        pd.Timestamp("2026-09-29 09:00", tz="UTC"))
+    assert not tablas[4].bloqueado.any()

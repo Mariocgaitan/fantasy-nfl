@@ -40,7 +40,7 @@
   <tr><th>Titular</th><th>Juega</th><th>Entra</th></tr>
   {% for r in reemplazos %}
   <tr><td>{{ r.titular }}</td><td>{{ r.hora }}</td>
-      <td>{% if r.suplente %}{{ r.suplente }} <small>{{ r.hora_suplente }}</small>{% else %}<span class="suave">sin respaldo útil</span>{% endif %}</td></tr>
+      <td>{% if r.suplente %}{{ r.suplente }} <small>{{ r.hora_suplente }}</small>{% if r.lesion_suplente != "ACTIVE" %} <strong>{{ r.lesion_suplente }}</strong>{% endif %}{% else %}<span class="suave">sin respaldo útil</span>{% endif %}</td></tr>
   {% endfor %}
 </table>
 

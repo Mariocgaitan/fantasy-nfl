@@ -21,7 +21,10 @@ def tablas_por_semana(jugadores, proyecciones, partidos, plantilla_mia, semana, 
             t = t.merge(plantilla_mia[["jugador_id", "slot", "bloqueado"]],
                         on="jugador_id", how="left")
             empezo = t["inicio_utc"].notna() & (t["inicio_utc"] <= ahora)
-            t["bloqueado"] = t["bloqueado"].where(t["bloqueado"].notna(), empezo).astype(bool)
+            # Solo cuenta un bloqueo si el partido de esta semana ya empezó: el martes ESPN
+            # todavía marca bloqueada la semana que terminó.
+            espn_dice = t["bloqueado"].fillna(True).astype(bool)
+            t["bloqueado"] = espn_dice & empezo
             t["slot"] = t["slot"].fillna("BANCA")
         else:
             t["slot"] = "BANCA"

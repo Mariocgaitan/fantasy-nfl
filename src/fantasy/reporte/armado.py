@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from fantasy.config import TEMPORADA
+from fantasy.config import SEMANA_FINAL, TEMPORADA
 from fantasy.decision import agencia_libre
 from fantasy.decision.alineacion import TITULARES, aplicar_regla_duda, optima, reemplazos
 from fantasy.horario import ZONA, semana_objetivo
@@ -12,6 +12,10 @@ from fantasy.ingesta import espn, nflverse
 
 DIAS = {"martes": "del martes", "viernes": "del viernes", "domingo": "del domingo"}
 DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
+
+
+class TemporadaTerminada(Exception):
+    """Ya no quedan semanas de la liga por decidir."""
 
 
 @dataclass
@@ -37,10 +41,10 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     proyecciones = espn.parsear_proyecciones(crudos["proyecciones"], TEMPORADA)
     partidos = espn.parsear_calendario(crudos["calendario"])
     semana = semana_objetivo(espn.semana_actual(liga), partidos, ahora)
+    if semana > SEMANA_FINAL:
+        raise TemporadaTerminada(f"la temporada de la liga terminó (semana {semana})")
 
     mia = plantillas[plantillas.equipo_id == equipo_id]
-    if semana != espn.semana_actual(liga):  # semana nueva: nada bloqueado todavía
-        mia = mia.assign(bloqueado=False)
     tablas = agencia_libre.tablas_por_semana(jugadores, proyecciones, partidos, mia, semana, ahora)
     t = tablas[semana]
     mis_ids = set(mia.jugador_id)
@@ -69,6 +73,7 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         "slot": r.slot, "titular": idx.loc[r.titular, "nombre"], "hora": hora(r.titular),
         "suplente": idx.loc[r.suplente, "nombre"] if r.suplente else None,
         "hora_suplente": hora(r.suplente) if r.suplente else None,
+        "lesion_suplente": idx.loc[r.suplente, "lesion"] if r.suplente else None,
     } for r in reemplazos(al, tm)]
 
     por_id = jugadores.set_index("jugador_id")

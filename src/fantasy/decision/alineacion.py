@@ -78,19 +78,30 @@ def aplicar_regla_duda(al: Alineacion, t: pd.DataFrame, umbral: float = UMBRAL_D
 
 
 def reemplazos(al: Alineacion, t: pd.DataFrame) -> list[Reemplazo]:
-    """Para cada titular movible, el mejor suplente que juega a la misma hora o después."""
+    """Para cada titular movible, el mejor suplente que juega a la misma hora o después.
+    Un suplente cubre a un solo titular; primero eligen los que juegan más tarde, que son
+    los que tienen menos opciones."""
     idx = t.set_index("jugador_id")
     banca = t[~t.jugador_id.isin(al.ids()) & ~t.bloqueado & (t.proy > 0) & (t.p_jugar > 0)
               & t.inicio_utc.notna()]
-    salida = []
-    for slot, j in al.slots:
+    movibles = [(i, slot, j) for i, (slot, j) in enumerate(al.slots) if not idx.loc[j].bloqueado]
+    nunca = pd.Timestamp.min.tz_localize("UTC")
+
+    def inicio(j: int) -> pd.Timestamp:
+        v = idx.loc[j].inicio_utc
+        return v if pd.notna(v) else nunca
+
+    movibles.sort(key=lambda x: inicio(x[2]), reverse=True)  # estable en empates
+    usados: set[int] = set()
+    elegidos: dict[int, Reemplazo] = {}
+    for i, slot, j in movibles:
         f = idx.loc[j]
-        if f.bloqueado:
-            continue
-        cand = banca[banca.pos.isin(_posiciones(slot))]
+        cand = banca[banca.pos.isin(_posiciones(slot)) & ~banca.jugador_id.isin(usados)]
         if pd.notna(f.inicio_utc):
             cand = cand[cand.inicio_utc >= f.inicio_utc]
         mejor = cand.sort_values("esperado", ascending=False, kind="stable").head(1)
         suplente = int(mejor.jugador_id.iloc[0]) if len(mejor) else None
-        salida.append(Reemplazo(slot, int(j), suplente))
-    return salida
+        if suplente is not None:
+            usados.add(suplente)
+        elegidos[i] = Reemplazo(slot, int(j), suplente)
+    return [elegidos[i] for i in sorted(elegidos)]

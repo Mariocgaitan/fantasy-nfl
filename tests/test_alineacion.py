@@ -108,5 +108,7 @@ def test_reemplazos_respetan_horarios(semana3):
     assert r["Jahmyr Gibbs"] == "Breece Hall"
     assert r["Ashton Jeanty"] == "D'Andre Swift"  # Hall juega antes que Jeanty
     assert r["Parker Washington"] == "Malik Nabers"
-    assert r["James Cook III"] == "Breece Hall"
+    assert r["James Cook III"] == "Jalen Coker"  # Hall ya cubre a Gibbs: nadie se repite
     assert "Christian Watson" not in r      # ya está bloqueado
+    suplentes = [s for s in r.values() if s]
+    assert len(suplentes) == len(set(suplentes))
