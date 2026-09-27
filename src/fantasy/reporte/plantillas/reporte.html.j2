@@ -49,7 +49,7 @@
 <table>
   <tr><th>Pedir</th><th>Soltar</th><th class="num">Ganancia</th></tr>
   {% for a in agencia %}
-  <tr><td>{{ a.pedir }} <small>{{ a.pos }}</small></td><td>{{ a.soltar }}</td><td class="num">+{{ a.ganancia }}</td></tr>
+  <tr><td>{{ a.pedir }} <small>{{ a.pos }}</small>{% if a.lesion != "ACTIVE" %} <strong>{{ a.lesion }}</strong>{% endif %}</td><td>{{ a.soltar }}</td><td class="num">+{{ a.ganancia }}</td></tr>
   {% endfor %}
 </table>
 <p class="suave">Ganancia: puntos proyectados extra de aquí a la semana 17.</p>

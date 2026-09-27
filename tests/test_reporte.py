@@ -59,3 +59,17 @@ def test_resumen_y_envio(fixture_dir):
     assert req.full_url.startswith("https://ntfy.sh/tema-secreto?")
     assert q["email"] == ["yo@example.com"] and q["click"] == ["https://x/reportes/a.html"]
     assert req.data.decode("utf-8") == texto and req.get_method() == "POST"
+
+
+def test_horas_en_espanol(fixture_dir):
+    r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
+    shough = next(x for x in r.reemplazos if x["titular"] == "Tyler Shough")
+    assert shough["hora"] == "lun 06:25"
+
+
+def test_agencia_libre_muestra_la_lesion(fixture_dir):
+    r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
+    assert all("lesion" in a for a in r.agencia)
+    html = generar_html(r)
+    fuera = [a for a in r.agencia if a["lesion"] != "ACTIVE"]
+    assert all(a["lesion"] in html for a in fuera)

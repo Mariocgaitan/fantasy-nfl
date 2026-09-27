@@ -11,6 +11,7 @@ from fantasy.horario import ZONA, semana_objetivo
 from fantasy.ingesta import espn, nflverse
 
 DIAS = {"martes": "del martes", "viernes": "del viernes", "domingo": "del domingo"}
+DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 
 
 @dataclass
@@ -59,7 +60,10 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
 
     def hora(j):
         v = idx.loc[j, "inicio_utc"]
-        return v.tz_convert(ZONA).strftime("%a %H:%M") if pd.notna(v) else "descansa"
+        if pd.isna(v):
+            return "descansa"
+        local = v.tz_convert(ZONA)
+        return f"{DIAS_CORTOS[local.weekday()]} {local:%H:%M}"
 
     remp = [{
         "slot": r.slot, "titular": idx.loc[r.titular, "nombre"], "hora": hora(r.titular),
@@ -67,9 +71,11 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         "hora_suplente": hora(r.suplente) if r.suplente else None,
     } for r in reemplazos(al, tm)]
 
-    nombres = jugadores.set_index("jugador_id").nombre
+    por_id = jugadores.set_index("jugador_id")
+    nombres = por_id.nombre
     agencia = [{
         "pedir": nombres[x.pedir], "pos": x.pos, "soltar": nombres[x.soltar],
+        "lesion": por_id.loc[x.pedir, "lesion"],
         "ganancia": round(float(x.ganancia), 1),
     } for x in agencia_libre.recomendar(jugadores, tablas, mis_ids, semana).itertuples()]
 
