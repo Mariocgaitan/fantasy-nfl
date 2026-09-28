@@ -4,7 +4,8 @@ import shutil
 from fantasy.cli import main
 
 AHORA = "2026-09-25T02:26:00+00:00"
-ENTORNO = {"NTFY_TOPIC": "t", "NTFY_EMAIL": "yo@example.com", "PAGES_URL": "https://p/"}
+ENTORNO = {"GMAIL_USER": "yo@gmail.com", "GMAIL_APP_PASSWORD": "clave",
+           "CORREO_DESTINO": "yo@example.com", "PAGES_URL": "https://p/"}
 
 
 def _args(fixture_dir, salida, *extra):
@@ -21,6 +22,8 @@ def test_corrida_completa_sin_red(fixture_dir, tmp_path):
     assert "SIN VALIDAR" in html
     assert (tmp_path / "index.html").read_text(encoding="utf-8") == html
     assert len(enviados) == 1
+    assert enviados[0][0] == ("yo@gmail.com", "clave")
+    assert enviados[0][1] == "yo@example.com"
     assert enviados[0][4] == "https://p/reportes/2026-sem03-viernes.html"
 
 
@@ -72,9 +75,9 @@ def test_temporada_terminada_sale_limpio(fixture_dir, tmp_path, monkeypatch):
 
 
 def test_si_falla_el_correo_el_reporte_igual_se_publica(fixture_dir, tmp_path):
-    # Revisión final: ntfy caído no debe tumbar la publicación.
+    # Revisión final: correo caído no debe tumbar la publicación.
     def falla(*a, **k):
-        raise OSError("ntfy no responde")
+        raise OSError("Gmail no responde")
 
     codigo = main(_args(fixture_dir, tmp_path), entorno=ENTORNO, enviar_fn=falla)
     assert codigo == 0

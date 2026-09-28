@@ -33,8 +33,9 @@ jobs:
       - run: uv sync --frozen
       - name: Generar reporte
         env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          NTFY_EMAIL: ${{ secrets.NTFY_EMAIL }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
           PAGES_URL: https://mariocgaitan.github.io/fantasy-nfl
           TIPO: ${{ inputs.tipo || 'auto' }}
           FORZAR: ${{ inputs.forzar && '--forzar' || '' }}
