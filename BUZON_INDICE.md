@@ -22,3 +22,12 @@
   https://github.com/Mariocgaitan/fantasy-nfl
 - HUECO RESUELTO: las proyecciones semanales históricas de ESPN (2023–2025) sí se pueden
   recuperar desde la API pública; son la referencia para validar el modelo.
+
+## 2026-09-28
+- HITO: fase 0 desplegada. GitHub Actions genera el reporte (alineación, reemplazos,
+  agencia libre, ganando rol) martes 19:00, viernes 08:00 y domingo 20:00 (Sídney), lo
+  publica en https://mariocgaitan.github.io/fantasy-nfl/ y avisa por correo. 68 pruebas,
+  3 revisiones independientes. Primer reporte automático: martes 2026-09-29.
+- ESTADO: diseño -> en producción (provisional, "sin validar"; decide la proyección de ESPN).
+- HITO: cambio de stack en notificaciones: correo por Gmail (SMTP) en lugar de ntfy.sh, que
+  dejó de permitir correo anónimo.
