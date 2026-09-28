@@ -1,9 +1,11 @@
-"""Aviso por correo a través del reenvío de ntfy.sh (sin cuenta ni contraseña)."""
+"""Aviso por correo desde Gmail (contraseña de aplicación guardada como secreto)."""
 
-import urllib.parse
-import urllib.request
+import smtplib
+from email.message import EmailMessage
 
 from fantasy.reporte.armado import DIAS, Reporte, estado
+
+SERVIDOR = ("smtp.gmail.com", 465)
 
 
 def resumen(r: Reporte) -> str:
@@ -20,12 +22,14 @@ def resumen(r: Reporte) -> str:
     return "\n".join(lineas)
 
 
-def enviar(tema: str, destino: str, titulo: str, cuerpo: str, enlace: str | None, *,
-           abrir=urllib.request.urlopen) -> None:
-    params = {"title": titulo, "email": destino}
-    if enlace:
-        params["click"] = enlace
-    url = f"https://ntfy.sh/{tema}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, data=cuerpo.encode("utf-8"), method="POST")
-    with abrir(req, timeout=30):
-        pass
+def enviar(credenciales: tuple[str, str], destino: str, titulo: str, cuerpo: str,
+           enlace: str | None, *, smtp=smtplib.SMTP_SSL) -> None:
+    usuario, clave = credenciales
+    msg = EmailMessage()
+    msg["From"] = usuario
+    msg["To"] = destino
+    msg["Subject"] = titulo
+    msg.set_content(cuerpo + (f"\n\nReporte completo: {enlace}\n" if enlace else "\n"))
+    with smtp(*SERVIDOR, timeout=30) as s:
+        s.login(usuario, clave)
+        s.send_message(msg)

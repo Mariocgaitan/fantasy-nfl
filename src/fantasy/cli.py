@@ -42,8 +42,9 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     if tipo is None:
         print("No toca reporte a esta hora.")
         return 0
-    tema, destino = entorno.get("NTFY_TOPIC"), entorno.get("NTFY_EMAIL")
-    avisar = bool(tema and destino and not a.sin_correo)
+    credenciales = (entorno.get("GMAIL_USER"), entorno.get("GMAIL_APP_PASSWORD"))
+    destino = entorno.get("CORREO_DESTINO")
+    avisar = bool(all(credenciales) and destino and not a.sin_correo)
     try:
         avisos: list[str] = []
         if a.instantanea:
@@ -61,7 +62,7 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     except Exception as e:  # noqa: BLE001 — cualquier falla avisa; nunca en silencio
         traceback.print_exc()
         if avisar:
-            _avisar(enviar_fn, tema, destino, "Fantasy: reporte NO generado",
+            _avisar(enviar_fn, credenciales, destino, "Fantasy: reporte NO generado",
                     f"{type(e).__name__}: {e}", None)
         return 1
 
@@ -80,14 +81,14 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     if avisar:
         enlace = entorno.get("PAGES_URL", "").rstrip("/") + f"/reportes/{nombre}"
         titulo = f"Fantasy · semana {reporte.semana} · {tipo}"
-        _avisar(enviar_fn, tema, destino, titulo, correo.resumen(reporte), enlace)
+        _avisar(enviar_fn, credenciales, destino, titulo, correo.resumen(reporte), enlace)
     return 0
 
 
-def _avisar(enviar_fn, tema, destino, titulo, cuerpo, enlace) -> None:
-    """El correo es un extra: si ntfy falla, el reporte igual se publica."""
+def _avisar(enviar_fn, credenciales, destino, titulo, cuerpo, enlace) -> None:
+    """El correo es un extra: si falla, el reporte igual se publica."""
     try:
-        enviar_fn(tema, destino, titulo, cuerpo, enlace)
+        enviar_fn(credenciales, destino, titulo, cuerpo, enlace)
     except Exception as e:  # noqa: BLE001 — el correo nunca bloquea la publicación
         print(f"AVISO: no se pudo mandar el correo: {e}", file=sys.stderr)
 

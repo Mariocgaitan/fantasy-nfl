@@ -20,7 +20,7 @@ Recomendar cada semana alineación, agencia libre e intercambios para BanKAI
 
 | Fase | Fecha límite | Contenido |
 |---|---|---|
-| 0. Provisional mínima | martes 2026-09-29 19:00 | Ingesta ESPN + nflverse, instantáneas, alineación con proyección de ESPN + reglas (a) y (b), agencia libre (pedir/soltar, ganando rol), página en GitHub Pages **sin botones**, correo por ntfy. Marcada "sin validar". La regla (b) se adelanta a esta fase porque el reporte del domingo 2026-10-04 llega antes que la fase 1 y sale casi gratis de la alineación. |
+| 0. Provisional mínima | martes 2026-09-29 19:00 | Ingesta ESPN + nflverse, instantáneas, alineación con proyección de ESPN + reglas (a) y (b), agencia libre (pedir/soltar, ganando rol), página en GitHub Pages **sin botones**, correo por Gmail (SMTP). Marcada "sin validar". La regla (b) se adelanta a esta fase porque el reporte del domingo 2026-10-04 llega antes que la fase 1 y sale casi gratis de la alineación. |
 | 1. Provisional completa | martes 2026-10-06 | Intercambios y modelo como segunda opinión. |
 | 2. Ejecución autorizada | semanas 6–7 | Botones → issue de GitHub → escritura en ESPN; vigilante de inactivos. |
 | 3. Modelo serio | en paralelo, meta semana 8 | Backtest walk-forward (ajuste 2024, corrida única en 2025 sellado). Si pasa, el modelo manda. |
@@ -41,7 +41,7 @@ src/fantasy/
   almacen/      instantaneas.py             → lee/escribe la rama `datos`
   proyeccion/   espn.py, modelo.py, riesgo.py
   decision/     alineacion.py, agencia_libre.py, intercambios.py
-  reporte/      html.py (Jinja2), correo.py (ntfy)
+  reporte/      html.py (Jinja2), correo.py (Gmail SMTP)
   ejecucion/    acciones.py, espn_escritura.py, vigilante.py     (fase 2)
   backtest/     walkforward.py, fuga.py, metricas.py             (fase 3)
   horario.py    lógica de hora de Sídney y ventanas
@@ -207,7 +207,7 @@ Principio: **nunca decidir en silencio con datos incompletos**.
 |---|---|
 | ESPN no responde o cambió su formato | 3 reintentos con espera creciente; validación de esquema y conteos (8 equipos, plantillas ≤ 14). Si falla: sin reporte y correo con la causa. |
 | nflverse sin datos de la semana | Se usa lo último disponible y el reporte lo marca con fecha. |
-| Cron no corrió | La siguiente corrida lo detecta y lo avisa; falla del workflow → correo de GitHub + ntfy. |
+| Cron no corrió | La siguiente corrida lo detecta y lo avisa; falla del workflow → correo de GitHub + correo de Gmail. |
 | Cookies vencidas | Correo con los pasos para renovarlas. |
 | Falla una escritura | Sin reintento ciego: releer ESPN, informar el estado real, acción pendiente. |
 

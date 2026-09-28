@@ -1,5 +1,3 @@
-import urllib.parse
-
 import pandas as pd
 
 from fantasy.almacen.instantaneas import cargar
@@ -35,30 +33,37 @@ def test_html_marca_sin_validar(fixture_dir):
     assert '<meta name="viewport"' in html
 
 
-def test_resumen_y_envio(fixture_dir):
+def test_resumen_y_envio_por_gmail(fixture_dir):
     r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
     texto = correo.resumen(r)
     assert texto.startswith("Semana 3 · reporte del viernes · SIN VALIDAR")
-    vistos = []
+    vistos = {}
 
-    class Resp:
+    class SMTPFalso:
+        def __init__(self, host, puerto, timeout):
+            vistos["servidor"] = (host, puerto)
+
         def __enter__(self):
             return self
 
         def __exit__(self, *a):
             return False
 
-    def abrir(req, timeout):
-        vistos.append(req)
-        return Resp()
+        def login(self, usuario, clave):
+            vistos["login"] = (usuario, clave)
 
-    correo.enviar("tema-secreto", "yo@example.com", "Fantasy · semana 3", texto,
-                  "https://x/reportes/a.html", abrir=abrir)
-    req = vistos[0]
-    q = urllib.parse.parse_qs(urllib.parse.urlparse(req.full_url).query)
-    assert req.full_url.startswith("https://ntfy.sh/tema-secreto?")
-    assert q["email"] == ["yo@example.com"] and q["click"] == ["https://x/reportes/a.html"]
-    assert req.data.decode("utf-8") == texto and req.get_method() == "POST"
+        def send_message(self, msg):
+            vistos["msg"] = msg
+
+    correo.enviar(("yo@gmail.com", "clave-app"), "yo@hotmail.com", "Fantasy · semana 3 · sábado",
+                  texto, "https://x/reportes/a.html", smtp=SMTPFalso)
+    msg = vistos["msg"]
+    assert vistos["servidor"] == ("smtp.gmail.com", 465)
+    assert vistos["login"] == ("yo@gmail.com", "clave-app")
+    assert (msg["From"], msg["To"]) == ("yo@gmail.com", "yo@hotmail.com")
+    assert msg["Subject"] == "Fantasy · semana 3 · sábado"
+    cuerpo = msg.get_content()
+    assert texto in cuerpo and "https://x/reportes/a.html" in cuerpo
 
 
 def test_horas_en_espanol(fixture_dir):
