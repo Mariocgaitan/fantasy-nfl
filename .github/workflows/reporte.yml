@@ -1,0 +1,50 @@
+name: reporte
+on:
+  schedule:
+    # Las dos horas UTC posibles de cada reporte (Sídney con y sin horario de verano), a los
+    # minutos 7 y 37: GitHub a veces se salta o retrasa los cron en punto. El script solo
+    # trabaja si en Sídney es la hora correcta y el reporte no existe todavía.
+    - cron: "7,37 8,9 * * 2"     # martes 19:00 Sídney
+    - cron: "7,37 21,22 * * 4"   # viernes 08:00 Sídney (jueves en UTC)
+    - cron: "7,37 9,10 * * 0"    # domingo 20:00 Sídney
+  workflow_dispatch:
+    inputs:
+      tipo:
+        description: "auto | martes | viernes | domingo"
+        default: "auto"
+      forzar:
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: reporte
+  cancel-in-progress: false
+jobs:
+  reporte:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: datos
+          path: datos
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - name: Generar reporte
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_EMAIL: ${{ secrets.NTFY_EMAIL }}
+          PAGES_URL: https://mariocgaitan.github.io/fantasy-nfl
+          TIPO: ${{ inputs.tipo || 'auto' }}
+          FORZAR: ${{ inputs.forzar && '--forzar' || '' }}
+        run: uv run fantasy reporte --tipo "$TIPO" --salida datos $FORZAR
+      - name: Publicar en la rama datos
+        working-directory: datos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -m "reporte $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push

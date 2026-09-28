@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BanKAI · semana {{ semana }}</title>
+<style>
+  :root { --fondo:#fafaf7; --texto:#1c1c1a; --suave:#6b6b66; --aviso:#b3261e; --linea:#e3e2dc; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#161615; --texto:#ecebe6; --suave:#a3a29c; --aviso:#ff8a80; --linea:#34332f; }
+  }
+  body { background:var(--fondo); color:var(--texto); font:16px/1.45 system-ui, sans-serif;
+         margin:0 auto; max-width:720px; padding:16px; }
+  .sinvalidar { border:2px solid var(--aviso); color:var(--aviso); padding:8px 12px;
+                font-weight:700; border-radius:6px; }
+  table { width:100%; border-collapse:collapse; margin:8px 0 20px; }
+  td, th { border-bottom:1px solid var(--linea); padding:6px 4px; text-align:left; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  small, .suave { color:var(--suave); }
+</style>
+</head>
+<body>
+<p class="sinvalidar">SIN VALIDAR — decide la proyección de ESPN</p>
+<h1>Semana {{ semana }} · reporte {{ dia }}</h1>
+<p class="suave">Generado {{ generado }} (Sídney) · proyección de titulares {{ esperado }}</p>
+
+<h2>Alineación</h2>
+{% if cambios %}<p><strong>Cambios:</strong> {{ cambios | join(" · ") }}</p>
+{% else %}<p>Tu alineación actual ya es la óptima.</p>{% endif %}
+<table>
+  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th><th>Estado</th></tr>
+  {% for f in alineacion %}
+  <tr><td>{{ f.slot }}</td><td>{{ f.nombre }} <small>{{ f.pos }}</small>{% if f.bloqueado %} 🔒{% endif %}</td>
+      <td class="num">{{ f.proy }}</td><td>{{ f.estado }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Si alguien queda inactivo</h2>
+<table>
+  <tr><th>Titular</th><th>Juega</th><th>Entra</th></tr>
+  {% for r in reemplazos %}
+  <tr><td>{{ r.titular }}</td><td>{{ r.hora }}</td>
+      <td>{% if r.suplente %}{{ r.suplente }} <small>{{ r.hora_suplente }}</small>{% if r.lesion_suplente != "ACTIVE" %} <strong>{{ r.estado_suplente }}</strong>{% endif %}{% else %}<span class="suave">sin respaldo útil</span>{% endif %}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Agencia libre</h2>
+{% if agencia %}
+<table>
+  <tr><th>Pedir</th><th>Soltar</th><th class="num">Ganancia</th></tr>
+  {% for a in agencia %}
+  <tr><td>{{ a.pedir }} <small>{{ a.pos }}</small>{% if a.lesion != "ACTIVE" %} <strong>{{ a.estado }}</strong>{% endif %}</td><td>{{ a.soltar }}</td><td class="num">+{{ a.ganancia }}</td></tr>
+  {% endfor %}
+</table>
+<p class="suave">Ganancia: puntos proyectados extra de aquí a la semana 17.</p>
+{% else %}<p>Ningún agente libre mejora tu plantilla.</p>{% endif %}
+
+<h2>Ganando rol</h2>
+{% if rol %}
+<table>
+  <tr><th>Jugador</th><th class="num">Snaps</th><th class="num">Oport.</th><th class="num">Dueños %</th></tr>
+  {% for x in rol %}
+  <tr><td>{{ x.nombre }} <small>{{ x.pos }}</small></td>
+      <td class="num">{{ (x.snaps_antes*100)|round|int }}→{{ (x.snaps_ahora*100)|round|int }}%</td>
+      <td class="num">{{ x.oport_antes }}→{{ x.oport_ahora }}</td><td class="num">{{ x.dueno_pct|round(1) }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p>Nadie libre viene ganando rol de forma clara.</p>{% endif %}
+
+{% if avisos %}<h2>Avisos</h2><ul>{% for a in avisos %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+</body>
+</html>
