@@ -25,16 +25,17 @@
 <p class="suave">Generado {{ generado }} (Sídney) · proyección de titulares {{ esperado }}</p>
 
 <h2>Alineación</h2>
+{% set con_modelo = alineacion | selectattr("modelo", "ne", none) | list | length > 0 %}
 {% if cambios %}<p><strong>Cambios:</strong> {{ cambios | join(" · ") }}</p>
 {% else %}<p>Tu alineación actual ya es la óptima.</p>{% endif %}
 <table>
-  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th>{% if alineacion and alineacion[0].modelo is not none %}<th class="num">Modelo</th>{% endif %}<th>Estado</th></tr>
+  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th>{% if con_modelo %}<th class="num">Modelo</th>{% endif %}<th>Estado</th></tr>
   {% for f in alineacion %}
   <tr><td>{{ f.slot }}</td><td>{{ f.nombre }} <small>{{ f.pos }}</small>{% if f.bloqueado %} 🔒{% endif %}</td>
-      <td class="num">{{ f.proy }}</td>{% if f.modelo is not none %}<td class="num">{{ f.modelo }}{% if f.discrepa %} ⚑{% endif %}</td>{% endif %}<td>{{ f.estado }}</td></tr>
+      <td class="num">{{ f.proy }}</td>{% if con_modelo %}<td class="num">{% if f.modelo is not none %}{{ f.modelo }}{% if f.discrepa %} ⚑{% endif %}{% else %}—{% endif %}</td>{% endif %}<td>{{ f.estado }}</td></tr>
   {% endfor %}
 </table>
-{% if alineacion and alineacion[0].modelo is not none %}<p class="suave">Modelo: segunda opinión sin validar; no cambia la alineación. ⚑ = difiere de ESPN por más de 3 puntos.</p>{% endif %}
+{% if con_modelo %}<p class="suave">Modelo: segunda opinión sin validar; no cambia la alineación. Por ahora casi siempre queda cerca de ESPN (un poco por debajo). ⚑ = difiere de ESPN por más de 3 puntos.</p>{% endif %}
 
 <h2>Si alguien queda inactivo</h2>
 <table>

@@ -36,9 +36,14 @@ MAE modelo 6.28 · ESPN 6.32 · delta -0.05 (IC95 -0.08 a -0.01)
   WR: modelo 6.55 · ESPN 6.61
 ```
 
-Le gana a ESPN por poco en el total, pero no en todas las posiciones (QB y TE quedan
-iguales o peor), así que todavía no cumpliría el criterio de la decisión 19. **2025 sigue
-sellado** para la validación final.
+**Lectura honesta:** la ventaja es solo aparente. El modelo predice en promedio ~0.5 puntos
+por debajo de ESPN, y con el error absoluto eso ya basta para mejorar, porque los puntos de
+fantasy tienen cola larga hacia arriba y el MAE premia apuntar a la mediana. Si a ESPN se le
+aplica el mismo ajuste (multiplicarla por 0.923, calculado solo con 2023), su MAE baja a
+6.27: **el modelo empata con una ESPN calibrada, no la supera**, y además no gana en QB ni
+en TE. Por eso en el reporte la columna "Modelo" casi siempre queda cerca de ESPN y la ⚑
+casi nunca aparece. Para la validación oficial (fase 3) la referencia justa es ESPN
+calibrada, no ESPN tal cual. **2025 sigue sellado** para esa validación.
 
 ## Comandos
 
