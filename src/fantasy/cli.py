@@ -30,11 +30,20 @@ def _parser() -> argparse.ArgumentParser:
     r.add_argument("--ahora", help="momento ISO con zona (para pruebas)")
     r.add_argument("--forzar", action="store_true", help="regenera aunque ya exista")
     r.add_argument("--sin-correo", action="store_true")
+    h = sub.add_parser("historico", help="baja 2023–2024 para entrenar el modelo")
+    h.add_argument("--raiz", type=Path, default=Path("historico"))
     return p
 
 
 def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_fn=None) -> int:
     a = _parser().parse_args(argv)
+    if a.comando == "historico":
+        from fantasy.ingesta import historico
+        for t in historico.TEMPORADAS_ENTRENAMIENTO:
+            historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t),
+                                        bajar_nflverse(t))
+            print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
     entorno = dict(os.environ) if entorno is None else entorno
     enviar_fn = enviar_fn or correo.enviar
     ahora = datetime.fromisoformat(a.ahora) if a.ahora else datetime.now(UTC)
