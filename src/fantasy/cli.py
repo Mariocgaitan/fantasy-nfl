@@ -32,6 +32,12 @@ def _parser() -> argparse.ArgumentParser:
     r.add_argument("--sin-correo", action="store_true")
     h = sub.add_parser("historico", help="baja 2023–2024 para entrenar el modelo")
     h.add_argument("--raiz", type=Path, default=Path("historico"))
+    en = sub.add_parser("entrenar", help="entrena el modelo con 2023–2024")
+    en.add_argument("--raiz", type=Path, default=Path("historico"))
+    en.add_argument("--salida", type=Path, default=Path("modelos/modelo_v1.json"))
+    ev = sub.add_parser("evaluar", help="walk-forward contra ESPN (preliminar)")
+    ev.add_argument("--temporada", type=int, required=True)
+    ev.add_argument("--raiz", type=Path, default=Path("historico"))
     return p
 
 
@@ -43,6 +49,26 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t),
                                         bajar_nflverse(t))
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando in ("entrenar", "evaluar"):
+        from fantasy.ingesta import historico
+        from fantasy.modelo import evaluar, ridge, variables
+        if a.comando == "evaluar" and a.temporada >= historico.SELLADA:
+            print("2025 está sellada para la validación final (decisión 20).", file=sys.stderr)
+            return 2
+        tablas = {t: variables.desde_crudos(historico.cargar_historico(a.raiz, t), t)
+                  for t in historico.TEMPORADAS_ENTRENAMIENTO}
+        if a.comando == "entrenar":
+            m = ridge.entrenar(pd.concat(tablas.values(), ignore_index=True))
+            ridge.guardar(m, a.salida)
+            print(f"Modelo guardado en {a.salida} ({', '.join(map(str, m.entrenado_con))})")
+            return 0
+        previas = pd.concat([f for t, f in tablas.items() if t < a.temporada], ignore_index=True)
+        res = evaluar.resumen(evaluar.walk_forward(previas, tablas[a.temporada]))
+        print(f"MAE modelo {res['mae_modelo']:.2f} · ESPN {res['mae_espn']:.2f} · "
+              f"delta {res['delta']:+.2f} (IC95 {res['ic95'][0]:+.2f} a {res['ic95'][1]:+.2f})")
+        for pos, (mm, me) in sorted(res["por_pos"].items()):
+            print(f"  {pos}: modelo {mm:.2f} · ESPN {me:.2f}")
         return 0
     entorno = dict(os.environ) if entorno is None else entorno
     enviar_fn = enviar_fn or correo.enviar
