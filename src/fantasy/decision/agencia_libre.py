@@ -9,6 +9,7 @@ from fantasy.proyeccion.espn import tabla_semana
 SEGURO = 0.15          # fracción de sus puntos que vale un respaldo (sin validar)
 SEMANAS_SEGURO = 3
 SEGURO_POS = ("QB", "TE")  # RB y WR ya se cubren entre sí por el FLEX
+ADP_INTOCABLE = 60.0  # nombre alto: sirve para intercambios
 COLUMNAS_ROL = ["jugador_id", "nombre", "pos", "disponibilidad", "snaps_antes", "snaps_ahora",
                 "oport_antes", "oport_ahora", "dueno_pct", "dueno_cambio"]
 
@@ -101,7 +102,8 @@ def _seguro(cand: pd.Series, ids: set[int], jugadores: pd.DataFrame,
     return SEGURO * puntos
 
 
-def recomendar(jugadores, tablas, mis_ids, semana, *, max_candidatos=30, max_sugerencias=5):
+def recomendar(jugadores, tablas, mis_ids, semana, *, max_candidatos=30, max_sugerencias=5,
+               intocables=frozenset()):
     futuro = pd.concat(tablas.values())
     total = futuro.groupby("jugador_id")["proy"].sum()
     libres = jugadores[jugadores.disponibilidad.isin(["LIBRE", "WAIVERS"])
@@ -110,7 +112,7 @@ def recomendar(jugadores, tablas, mis_ids, semana, *, max_candidatos=30, max_sug
     candidatos = libres.sort_values("total", ascending=False).head(max_candidatos)
     t0 = tablas[semana]
     bloqueados = set(t0.loc[t0.bloqueado & t0.jugador_id.isin(mis_ids), "jugador_id"])
-    soltables = [j for j in mis_ids if j not in bloqueados]
+    soltables = [j for j in mis_ids if j not in bloqueados and j not in intocables]
     valuador = Valuador(tablas)
     base = valuador.valor(mis_ids)
     filas = []

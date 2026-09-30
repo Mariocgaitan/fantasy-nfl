@@ -156,3 +156,12 @@ def test_bloqueos_viejos_de_espn_no_congelan_la_semana_siguiente(fixture_dir):
         espn.parsear_calendario(c["calendario"]), mia, 4,
         pd.Timestamp("2026-09-29 09:00", tz="UTC"))
     assert not tablas[4].bloqueado.any()
+
+
+def test_no_suelta_intocables():
+    jug = _jug(_mia() + [{"jugador_id": 99, "nombre": "LIBRE", "pos": "WR"}])
+    puntos = {1: 20, 2: 15, 3: 14, 4: 13, 5: 12, 6: 10, 7: 11, 8: 2, 99: 16}
+    tablas = {4: _tabla(jug, puntos)}
+    r = al.recomendar(jug, tablas, set(range(1, 9)), 4, intocables={8})
+    assert 8 not in set(r.soltar)
+    assert (r.ganancia > 0).all()
