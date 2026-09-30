@@ -49,11 +49,16 @@ def test_el_cron_del_workflow_cubre_cada_reporte_dos_veces():
 
     yml = (Path(__file__).parents[1] / ".github" / "workflows" / "reporte.yml").read_text(
         encoding="utf-8")
+    def campo(texto, todos):
+        return list(todos) if texto == "*" else [int(x) for x in texto.split(",")]
+
     disparos = []
-    for minutos, horas, dia in re.findall(r'cron: "([\d,]+) ([\d,]+) \* \* (\d)"', yml):
-        for h in horas.split(","):
-            for m in minutos.split(","):
-                disparos.append((int(dia), int(h), int(m)))
+    for minutos, horas, dias in re.findall(r'cron: "(\S+) (\S+) \* \* (\S+)"', yml):
+        for d in campo(dias, range(7)):
+            for h in campo(horas, range(24)):
+                for m in campo(minutos, range(60)):
+                    disparos.append((d, h, m))
+    assert disparos
     for semana_inicio in ("2026-09-27", "2026-10-11"):  # sin y con horario de verano
         lunes = datetime.fromisoformat(semana_inicio).replace(tzinfo=UTC) + timedelta(days=1)
         vistos: dict[str, int] = {}
