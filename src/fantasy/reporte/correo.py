@@ -16,6 +16,17 @@ def resumen(r: Reporte) -> str:
         nota = f" ({estado(a['lesion'])})" if a.get("lesion", "ACTIVE") != "ACTIVE" else ""
         lineas.append(f"Agencia libre: pedir {a['pedir']}{nota}, soltar {a['soltar']} "
                       f"(+{a['ganancia']})")
+    if r.intercambios:
+        x = r.intercambios[0]
+        recibes = ", ".join(x["lesiones"] or x["recibes"]) if x.get("lesiones") else ", ".join(
+            x["recibes"])
+        extra = ""
+        if x.get("relleno"):
+            extra += f"; luego pides {', '.join(x['relleno'])}"
+        if x.get("sueltas"):
+            extra += f"; sueltas {', '.join(x['sueltas'])}"
+        lineas.append(f"Intercambio: das {', '.join(x['das'])} a {x['rival']} por {recibes}"
+                      f"{extra} (+{x['ganancia']}, veto {x['riesgo']})")
     sin = [x["titular"] for x in r.reemplazos if x["suplente"] is None]
     if sin:
         lineas.append("Sin respaldo útil: " + ", ".join(sin))

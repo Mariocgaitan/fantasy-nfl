@@ -1,0 +1,5 @@
+MAE modelo 6.28 · ESPN 6.32 · delta -0.05 (IC95 -0.08 a -0.01)
+  QB: modelo 6.64 · ESPN 6.63
+  RB: modelo 6.12 · ESPN 6.22
+  TE: modelo 5.60 · ESPN 5.56
+  WR: modelo 6.55 · ESPN 6.61

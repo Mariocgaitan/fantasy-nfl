@@ -6,3 +6,5 @@ __pycache__/
 .env
 *.egg-info/
 dist/
+salida/
+salida_prueba/

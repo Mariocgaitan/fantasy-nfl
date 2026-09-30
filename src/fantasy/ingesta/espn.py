@@ -67,6 +67,40 @@ def parsear_proyecciones(proyecciones: dict, temporada: int) -> pd.DataFrame:
     return validar(df, PROYECCIONES, "proyecciones")
 
 
+def parsear_reales(proyecciones: dict, temporada: int) -> pd.DataFrame:
+    filas = [
+        {"jugador_id": pe["id"], "semana": int(s["scoringPeriodId"]),
+         "puntos": float(s.get("appliedTotal") or 0.0)}
+        for pe in proyecciones.get("players", [])
+        for s in pe["player"].get("stats") or []
+        if s.get("seasonId") == temporada and s.get("statSourceId") == 0
+        and s.get("statSplitTypeId") == 1 and s.get("scoringPeriodId", 0) > 0
+    ]
+    df = pd.DataFrame(filas, columns=PROYECCIONES).drop_duplicates(["jugador_id", "semana"])
+    return validar(df, PROYECCIONES, "reales")
+
+
+def parsear_adp(liga: dict) -> dict[int, float]:
+    adp = {}
+    for t in liga["teams"]:
+        for e in t["roster"]["entries"]:
+            o = e["playerPoolEntry"]["player"].get("ownership") or {}
+            adp[e["playerId"]] = float(o.get("averageDraftPosition") or 200.0)
+    return adp
+
+
+def rival_de(liga: dict, equipo_id: int, semana: int) -> int | None:
+    for m in liga.get("schedule", []):
+        if m.get("matchupPeriodId") != semana:
+            continue
+        local, visita = m["home"]["teamId"], m.get("away", {}).get("teamId")
+        if equipo_id == local:
+            return visita
+        if equipo_id == visita:
+            return local
+    return None
+
+
 def _dueno_pct(jugador: dict) -> tuple[float, float]:
     o = jugador.get("ownership") or {}
     return float(o.get("percentOwned", 0.0)), float(o.get("percentChange", 0.0))
