@@ -31,3 +31,10 @@
 - ESTADO: diseño -> en producción (provisional, "sin validar"; decide la proyección de ESPN).
 - HITO: cambio de stack en notificaciones: correo por Gmail (SMTP) en lugar de ntfy.sh, que
   dejó de permitir correo anónimo.
+
+## 2026-09-30
+- HITO: fase 1 en producción: intercambios en el reporte del martes (reprodujo solo el
+  intercambio real con Chumpi, +68.5) y modelo propio (ridge por posición, 2023–2024) como
+  segunda opinión que no decide. Evaluación preliminar 2024: empata con una ESPN calibrada.
+- ESTADO: la decisión 19 (validación) ahora compara contra ESPN calibrada.
+- HUECO RESUELTO: los waivers de la liga se procesan a las 17:00 de Sídney (07:00 UTC).
