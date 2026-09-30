@@ -1,16 +1,18 @@
 """De respuestas crudas a un Reporte listo para pintar. Sin red ni disco."""
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pandas as pd
 
-from fantasy.config import SEMANA_FINAL, TEMPORADA
+from fantasy.config import RUTA_MODELO, SEMANA_FINAL, TEMPORADA, UMBRAL_DISCREPA
 from fantasy.decision import agencia_libre
 from fantasy.decision import intercambios as intercambios_mod
 from fantasy.decision.agencia_libre import ADP_INTOCABLE
 from fantasy.decision.alineacion import TITULARES, aplicar_regla_duda, optima, reemplazos
 from fantasy.horario import ZONA, semana_objetivo
 from fantasy.ingesta import espn, nflverse
+from fantasy.proyeccion.modelo import segunda_opinion
 
 DIAS = {"martes": "del martes", "viernes": "del viernes", "domingo": "del domingo"}
 DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
@@ -44,7 +46,7 @@ class Reporte:
 
 
 def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
-          avisos: list[str] | None = None) -> Reporte:
+          avisos: list[str] | None = None, ruta_modelo: Path | None = None) -> Reporte:
     avisos = list(avisos or [])
     liga = crudos["liga"]
     plantillas = espn.parsear_plantillas(liga)
@@ -65,12 +67,18 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     al = aplicar_regla_duda(optima(tm), tm)
     idx = tm.set_index("jugador_id")
 
+    modelo, aviso_modelo = segunda_opinion(crudos, TEMPORADA, semana, ruta_modelo or RUTA_MODELO)
+    if aviso_modelo:
+        avisos.append(aviso_modelo)
+
     alineacion = [{
         "slot": s, "nombre": idx.loc[j, "nombre"], "pos": idx.loc[j, "pos"],
         "proy": round(float(idx.loc[j, "proy"]), 1), "lesion": idx.loc[j, "lesion"],
         "estado": ("descansa" if pd.isna(idx.loc[j, "inicio_utc"])
                    else estado(idx.loc[j, "lesion"])),
         "bloqueado": bool(idx.loc[j, "bloqueado"]),
+        "modelo": round(modelo[j], 1) if j in modelo else None,
+        "discrepa": j in modelo and abs(modelo[j] - float(idx.loc[j, "proy"])) > UMBRAL_DISCREPA,
     } for s, j in al.slots]
     actuales = set(tm.loc[tm.slot.isin(TITULARES), "jugador_id"])
     entran = [idx.loc[j, "nombre"] for j in al.ids() - actuales]

@@ -28,12 +28,13 @@
 {% if cambios %}<p><strong>Cambios:</strong> {{ cambios | join(" · ") }}</p>
 {% else %}<p>Tu alineación actual ya es la óptima.</p>{% endif %}
 <table>
-  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th><th>Estado</th></tr>
+  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th>{% if alineacion and alineacion[0].modelo is not none %}<th class="num">Modelo</th>{% endif %}<th>Estado</th></tr>
   {% for f in alineacion %}
   <tr><td>{{ f.slot }}</td><td>{{ f.nombre }} <small>{{ f.pos }}</small>{% if f.bloqueado %} 🔒{% endif %}</td>
-      <td class="num">{{ f.proy }}</td><td>{{ f.estado }}</td></tr>
+      <td class="num">{{ f.proy }}</td>{% if f.modelo is not none %}<td class="num">{{ f.modelo }}{% if f.discrepa %} ⚑{% endif %}</td>{% endif %}<td>{{ f.estado }}</td></tr>
   {% endfor %}
 </table>
+{% if alineacion and alineacion[0].modelo is not none %}<p class="suave">Modelo: segunda opinión sin validar; no cambia la alineación. ⚑ = difiere de ESPN por más de 3 puntos.</p>{% endif %}
 
 <h2>Si alguien queda inactivo</h2>
 <table>
