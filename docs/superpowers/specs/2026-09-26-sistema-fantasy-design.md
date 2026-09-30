@@ -232,3 +232,45 @@ reales:
 
 Reproducibilidad: `uv.lock`, reportes regenerables desde su instantánea,
 README con arquitectura y, al final, el resultado del backtest.
+
+## 9. Fase 1 — diseño detallado (aprobado 2026-09-29)
+
+### 9.1 Intercambios (solo en el reporte del martes; ESPN sigue decidiendo)
+- **Búsqueda**: 1–3 jugadores de Mario por 1–2 de los **5 mejores de cada rival**
+  (proyección de ESPN de aquí a la semana 17). Se excluye al rival de la semana objetivo.
+- **Ganancia de Mario**: `Valuador` de la plantilla nueva menos la actual, semana a
+  semana. Si Mario da más de lo que recibe, los lugares libres se llenan con los mejores
+  agentes libres (greedy por `Valuador`), para no castigar los N-por-1.
+- **Aceptación**: Δ alineación del rival (ESPN) ≥ −15 y Δ nombre ≥ −3
+  (nombre = 100·e^(−ADP/45), ADP de `ownership.averageDraftPosition` en la liga).
+- **Riesgo de veto** por el desbalance de proyección de ESPN del resto de la temporada
+  entre lo que recibe y lo que da Mario: > +25 % alto, +10 % a +25 % medio, si no bajo.
+- Se muestran hasta 5 propuestas, **una por rival**, con la nota "propón una a la vez".
+
+### 9.2 La banca también vale como moneda de cambio
+La agencia libre nunca sugiere soltar a un jugador con **ADP < 60** (valor de nombre alto):
+puede no entrar a la alineación y aun así servir en un intercambio (caso Nabers,
+semana 4).
+
+### 9.3 Modelo, segunda opinión
+- **Objetivo**: puntos reales de ESPN (`statSourceId=0`, `statSplitTypeId=1`), la misma
+  puntuación de la liga.
+- **Variables** para la semana w: proyección de ESPN de la semana w; promedio de snaps %,
+  targets, acarreos y puntos reales de ESPN en los partidos **de la misma temporada con
+  semana < w**; número de esos partidos. Uso de nflverse unido por `espn_id`.
+- **Fuga**: cada fila guarda `semana_fuente_max` (la última semana usada por sus
+  variables); construir o entrenar con una fila donde `semana_fuente_max >= semana`
+  detiene la corrida. La granularidad por semana es suficiente: nunca se usa nada de la
+  semana que se predice.
+- **Modelo**: ridge por posición (scikit-learn) con variables estandarizadas; se entrena
+  con 2023–2024 y se guarda como JSON versionado en `modelos/`. **2025 no se toca.**
+- **Datos históricos** (proyecciones y reales de ESPN desde `leaguedefaults/3` sin
+  `filterIds`, ~1000 jugadores por temporada; uso de nflverse) se guardan comprimidos en
+  `historico/` para que el entrenamiento sea reproducible.
+- **Evaluación preliminar**: `fantasy evaluar --temporada 2024`, walk-forward semanas 3–17
+  (entrena con 2023 + semanas anteriores de 2024), MAE del modelo contra ESPN en los
+  relevantes de cada semana (top 12 QB, 30 RB, 30 WR, 12 TE por proyección de ESPN) e
+  intervalo bootstrap por semanas. No es la validación oficial. Rechaza 2025.
+- **En el reporte**: columna "Modelo" en la alineación y ⚑ cuando difiere de ESPN por más
+  de 3 puntos. No cambia ninguna decisión (decisión 15). Si falta el modelo o el uso de
+  nflverse, la columna no aparece y el reporte lo avisa.
