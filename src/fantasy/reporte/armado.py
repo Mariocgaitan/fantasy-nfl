@@ -115,12 +115,19 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     if tipo == "martes":
         equipos = {t["id"]: t["name"].strip() for t in liga["teams"]}
         rival = espn.rival_de(liga, equipo_id, semana)
-        for x in intercambios_mod.buscar(plantillas, jugadores, tablas, equipo_id, adp, rival):
+        try:
+            encontradas = intercambios_mod.buscar(plantillas, jugadores, tablas, equipo_id,
+                                                  adp, rival)
+        except Exception as e:  # noqa: BLE001 — un fallo aquí no tumba el resto del reporte
+            encontradas = []
+            avisos.append(f"No se pudieron calcular los intercambios: {type(e).__name__}: {e}")
+        for x in encontradas:
             propuestas.append({
                 "rival": equipos[x.rival],
                 "das": [nombres[i] for i in x.das],
                 "recibes": [nombres[i] for i in x.recibes],
                 "relleno": [nombres[i] for i in x.relleno],
+                "sueltas": [nombres[i] for i in x.sueltas],
                 "ganancia": round(x.ganancia, 1),
                 "riesgo": x.riesgo_veto,
                 "lesiones": [f"{nombres[i]} ({estado(por_id.loc[i, 'lesion'])})"

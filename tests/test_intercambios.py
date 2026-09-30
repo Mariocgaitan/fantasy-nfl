@@ -93,3 +93,21 @@ def test_semana4_real_rapido_y_sin_norway():
     assert len({x.rival for x in props}) == len(props)  # una por rival
     assert all(x.ganancia > 0 for x in props)
     assert [x.ganancia for x in props] == sorted((x.ganancia for x in props), reverse=True)
+
+
+def test_recibir_mas_de_lo_que_das_dice_a_quien_soltar():
+    # Revisión 1: 1 por 2 con la plantilla llena no puede dejarte en 15.
+    plantillas, jug, tablas, adp = _liga_chica()
+    props = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=7, max_das=1)
+    for x in props:
+        extra = len(x.recibes) - len(x.das)
+        assert len(x.sueltas) == max(extra, 0)
+        assert not set(x.sueltas) & set(x.recibes)
+
+
+def test_rival_con_pocos_jugadores_no_truena():
+    # Review Focus 1
+    plantillas, jug, tablas, adp = _liga_chica()
+    chica = plantillas[~plantillas.jugador_id.isin([12, 13, 15, 16])]
+    props = it.buscar(chica, jug, tablas, 5, adp, None, tope=7)
+    assert all(x.rival == 4 for x in props)

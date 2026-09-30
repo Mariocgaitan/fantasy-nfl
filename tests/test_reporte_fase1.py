@@ -32,3 +32,22 @@ def test_viernes_no_trae_intercambios():
 def test_agencia_no_suelta_a_nabers():
     r = armar(cargar(SEM4), MARTES, "martes", 5)
     assert "Malik Nabers" not in {a["soltar"] for a in r.agencia}
+
+
+def test_correo_avisa_lesiones_y_relleno():
+    r = armar(cargar(SEM4), MARTES, "viernes", 5)
+    r.intercambios = [{"rival": "X", "das": ["A"], "recibes": ["B"], "relleno": ["C"],
+                       "sueltas": ["D"], "ganancia": 10.0, "riesgo": "bajo",
+                       "lesiones": ["B (fuera)"]}]
+    texto = correo.resumen(r)
+    assert "B (fuera)" in texto and "pides C" in texto and "sueltas D" in texto
+
+
+def test_si_falla_la_busqueda_el_reporte_sale_igual(monkeypatch):
+    def rota(*a, **k):
+        raise KeyError("sin plantilla")
+
+    monkeypatch.setattr("fantasy.reporte.armado.intercambios_mod.buscar", rota)
+    r = armar(cargar(SEM4), MARTES, "martes", 5)
+    assert r.intercambios == [] and r.alineacion
+    assert any("intercambios" in a.lower() for a in r.avisos)

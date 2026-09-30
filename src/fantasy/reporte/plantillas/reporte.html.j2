@@ -62,7 +62,8 @@
   {% for x in intercambios %}
   <tr><td>{{ x.rival }}</td><td>{{ x.das | join(", ") }}</td>
       <td>{{ x.recibes | join(", ") }}{% if x.lesiones %} <strong>{{ x.lesiones | join(", ") }}</strong>{% endif %}
-          {% if x.relleno %}<br><small>y tomas de la agencia libre: {{ x.relleno | join(", ") }}</small>{% endif %}</td>
+          {% if x.relleno %}<br><small>y pides (agencia libre o waivers): {{ x.relleno | join(", ") }}</small>{% endif %}
+          {% if x.sueltas %}<br><small>y sueltas: {{ x.sueltas | join(", ") }}</small>{% endif %}</td>
       <td class="num">+{{ x.ganancia }}</td><td>{{ x.riesgo }}</td></tr>
   {% endfor %}
 </table>
