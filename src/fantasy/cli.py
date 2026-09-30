@@ -12,7 +12,7 @@ import pandas as pd
 from fantasy.almacen import instantaneas
 from fantasy.config import EQUIPO_ID, LIGA_ID, TEMPORADA
 from fantasy.esquemas import DatosInvalidos
-from fantasy.horario import ZONA, reporte_que_toca
+from fantasy.horario import ZONA, slot_actual
 from fantasy.ingesta.espn import bajar_espn
 from fantasy.ingesta.nflverse import bajar_nflverse
 from fantasy.reporte import correo
@@ -38,10 +38,20 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     entorno = dict(os.environ) if entorno is None else entorno
     enviar_fn = enviar_fn or correo.enviar
     ahora = datetime.fromisoformat(a.ahora) if a.ahora else datetime.now(UTC)
-    tipo = reporte_que_toca(ahora) if a.tipo == "auto" else a.tipo
-    if tipo is None:
-        print("No toca reporte a esta hora.")
-        return 0
+    marcador = None
+    if a.tipo == "auto":
+        slot = slot_actual(ahora)
+        if slot is None:
+            print("No toca reporte a esta hora.")
+            return 0
+        tipo, inicio = slot
+        marcador = a.salida / f"ultimo_{tipo}.txt"
+        ya_hecho = marcador.exists() and marcador.read_text().strip() == inicio.isoformat()
+        if ya_hecho and not a.forzar:
+            print(f"El reporte del {tipo} de esta ventana ya se generó.")
+            return 0
+    else:
+        tipo = a.tipo
     credenciales = (entorno.get("GMAIL_USER"), entorno.get("GMAIL_APP_PASSWORD"))
     destino = entorno.get("CORREO_DESTINO")
     avisar = bool(all(credenciales) and destino and not a.sin_correo)
@@ -77,6 +87,8 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     archivo.parent.mkdir(parents=True, exist_ok=True)
     archivo.write_text(html, encoding="utf-8")
     (a.salida / "index.html").write_text(html, encoding="utf-8")
+    if marcador is not None:
+        marcador.write_text(inicio.isoformat())
     print(f"Reporte escrito en {archivo}")
     if avisar:
         enlace = entorno.get("PAGES_URL", "").rstrip("/") + f"/reportes/{nombre}"

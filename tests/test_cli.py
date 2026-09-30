@@ -95,3 +95,16 @@ def test_error_inesperado_avisa_y_sale_con_error(fixture_dir, tmp_path, monkeypa
                   enviar_fn=lambda *a, **k: enviados.append(a))
     assert codigo == 1
     assert "NO generado" in enviados[0][2]
+
+
+def test_auto_no_descarga_otra_vez_si_ya_se_genero_en_esta_ventana(fixture_dir, tmp_path):
+    # Con corridas cada media hora, solo la primera de la ventana trabaja.
+    args = ["reporte", "--tipo", "auto", "--instantanea", str(fixture_dir),
+            "--salida", str(tmp_path), "--sin-correo"]
+    assert main([*args, "--ahora", "2026-09-29T09:07:00+00:00"], entorno={}) == 0
+    assert (tmp_path / "ultimo_martes.txt").exists()
+    otra = tmp_path / "vacia"
+    otra.mkdir()
+    # Si intentara cargar datos de esta carpeta vacía fallaría: debe saltarse antes.
+    args[4] = str(otra)
+    assert main([*args, "--ahora", "2026-09-29T14:48:00+00:00"], entorno={}) == 0

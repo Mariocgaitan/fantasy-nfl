@@ -1,12 +1,10 @@
 name: reporte
 on:
   schedule:
-    # Las dos horas UTC posibles de cada reporte (Sídney con y sin horario de verano), a los
-    # minutos 7 y 37: GitHub a veces se salta o retrasa los cron en punto. El script solo
-    # trabaja si en Sídney es la hora correcta y el reporte no existe todavía.
-    - cron: "7,37 8,9 * * 2"     # martes 19:00 Sídney
-    - cron: "7,37 21,22 * * 4"   # viernes 08:00 Sídney (jueves en UTC)
-    - cron: "7,37 9,10 * * 0"    # domingo 20:00 Sídney
+    # Cada media hora (minutos 7 y 37: GitHub retrasa o se salta los cron en punto; el
+    # 29-sep-2026 disparó uno con 5.5 h de retraso). El script solo trabaja si hay un reporte
+    # pendiente cuya ventana sigue abierta (ver horario.VENTANAS) y no lo repite.
+    - cron: "7,37 * * * *"
   workflow_dispatch:
     inputs:
       tipo:

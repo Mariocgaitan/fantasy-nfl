@@ -1,6 +1,6 @@
 """Cuándo toca cada reporte (hora de Sídney) y de qué semana es."""
 
-from datetime import datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -11,18 +11,32 @@ REPORTES = {  # día de la semana (lunes = 0), hora local
     "viernes": (4, time(8, 0)),
     "domingo": (6, time(20, 0)),
 }
-TOLERANCIA = timedelta(minutes=90)
+# Hasta cuándo sirve cada reporte. GitHub llega a retrasar el cron varias horas, así que el
+# workflow corre cada media hora y genera el reporte pendiente mientras siga siendo útil.
+VENTANAS = {
+    "martes": timedelta(hours=20),   # hasta el miércoles 15:00, antes de los waivers (17:00)
+    "viernes": timedelta(hours=2),   # hasta las 10:00, antes del partido del jueves (~10:15)
+    "domingo": timedelta(hours=6),   # hasta las 02:00, antes de los primeros partidos (~03:00)
+}
+
+
+def slot_actual(ahora: datetime) -> tuple[str, datetime] | None:
+    """El reporte que toca ahora y su hora de inicio (en UTC), o None."""
+    local = ahora.astimezone(ZONA)
+    for atras in (0, 1):
+        dia = local.date() - timedelta(days=atras)
+        for tipo, (dia_semana, hora) in REPORTES.items():
+            if dia.weekday() != dia_semana:
+                continue
+            inicio = datetime.combine(dia, hora, tzinfo=ZONA)
+            if inicio <= local < inicio + VENTANAS[tipo]:
+                return tipo, inicio.astimezone(UTC)
+    return None
 
 
 def reporte_que_toca(ahora: datetime) -> str | None:
-    local = ahora.astimezone(ZONA)
-    for tipo, (dia, hora) in REPORTES.items():
-        if local.weekday() != dia:
-            continue
-        objetivo = datetime.combine(local.date(), hora, tzinfo=ZONA)
-        if objetivo <= local < objetivo + TOLERANCIA:
-            return tipo
-    return None
+    slot = slot_actual(ahora)
+    return slot[0] if slot else None
 
 
 def semana_objetivo(semana_espn: int, partidos: pd.DataFrame, ahora: pd.Timestamp) -> int:
