@@ -6,6 +6,8 @@ import pandas as pd
 
 from fantasy.config import SEMANA_FINAL, TEMPORADA
 from fantasy.decision import agencia_libre
+from fantasy.decision import intercambios as intercambios_mod
+from fantasy.decision.agencia_libre import ADP_INTOCABLE
 from fantasy.decision.alineacion import TITULARES, aplicar_regla_duda, optima, reemplazos
 from fantasy.horario import ZONA, semana_objetivo
 from fantasy.ingesta import espn, nflverse
@@ -37,6 +39,7 @@ class Reporte:
     reemplazos: list[dict]
     agencia: list[dict]
     rol: list[dict]
+    intercambios: list[dict] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)
 
 
@@ -56,6 +59,8 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     tablas = agencia_libre.tablas_por_semana(jugadores, proyecciones, partidos, mia, semana, ahora)
     t = tablas[semana]
     mis_ids = set(mia.jugador_id)
+    adp = espn.parsear_adp(liga)
+    intocables = {j for j in mis_ids if adp.get(j, 200.0) < ADP_INTOCABLE}
     tm = t[t.jugador_id.isin(mis_ids)]
     al = aplicar_regla_duda(optima(tm), tm)
     idx = tm.set_index("jugador_id")
@@ -94,7 +99,8 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         "lesion": por_id.loc[x.pedir, "lesion"],
         "estado": estado(por_id.loc[x.pedir, "lesion"]),
         "ganancia": round(float(x.ganancia), 1),
-    } for x in agencia_libre.recomendar(jugadores, tablas, mis_ids, semana).itertuples()]
+    } for x in agencia_libre.recomendar(jugadores, tablas, mis_ids, semana,
+                                            intocables=intocables).itertuples()]
 
     rol: list[dict] = []
     if all(k in crudos for k in ("semanal", "snaps", "jugadores")):
@@ -105,9 +111,25 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     else:
         avisos.append("Sin datos de uso de nflverse: no se calculó quién gana rol.")
 
+    propuestas: list[dict] = []
+    if tipo == "martes":
+        equipos = {t["id"]: t["name"].strip() for t in liga["teams"]}
+        rival = espn.rival_de(liga, equipo_id, semana)
+        for x in intercambios_mod.buscar(plantillas, jugadores, tablas, equipo_id, adp, rival):
+            propuestas.append({
+                "rival": equipos[x.rival],
+                "das": [nombres[i] for i in x.das],
+                "recibes": [nombres[i] for i in x.recibes],
+                "relleno": [nombres[i] for i in x.relleno],
+                "ganancia": round(x.ganancia, 1),
+                "riesgo": x.riesgo_veto,
+                "lesiones": [f"{nombres[i]} ({estado(por_id.loc[i, 'lesion'])})"
+                             for i in x.recibes if por_id.loc[i, "lesion"] != "ACTIVE"],
+            })
+
     return Reporte(
         tipo=tipo, semana=semana,
         generado=ahora.tz_convert(ZONA).strftime("%Y-%m-%d %H:%M"),
         esperado=round(al.esperado, 1), alineacion=alineacion, cambios=cambios,
-        reemplazos=remp, agencia=agencia, rol=rol, avisos=avisos,
+        reemplazos=remp, agencia=agencia, rol=rol, intercambios=propuestas, avisos=avisos,
     )

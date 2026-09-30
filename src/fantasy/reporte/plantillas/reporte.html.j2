@@ -55,6 +55,20 @@
 <p class="suave">Ganancia: puntos proyectados extra de aquí a la semana 17.</p>
 {% else %}<p>Ningún agente libre mejora tu plantilla.</p>{% endif %}
 
+{% if intercambios %}
+<h2>Intercambios</h2>
+<table>
+  <tr><th>Rival</th><th>Das</th><th>Recibes</th><th class="num">Ganancia</th><th>Veto</th></tr>
+  {% for x in intercambios %}
+  <tr><td>{{ x.rival }}</td><td>{{ x.das | join(", ") }}</td>
+      <td>{{ x.recibes | join(", ") }}{% if x.lesiones %} <strong>{{ x.lesiones | join(", ") }}</strong>{% endif %}
+          {% if x.relleno %}<br><small>y tomas de la agencia libre: {{ x.relleno | join(", ") }}</small>{% endif %}</td>
+      <td class="num">+{{ x.ganancia }}</td><td>{{ x.riesgo }}</td></tr>
+  {% endfor %}
+</table>
+<p class="suave">Una propuesta por rival; propón una a la vez. Ganancia: puntos proyectados extra de aquí a la semana 17. Ninguna es con tu rival de esta semana.</p>
+{% endif %}
+
 <h2>Ganando rol</h2>
 {% if rol %}
 <table>
