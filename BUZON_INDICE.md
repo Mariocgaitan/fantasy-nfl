@@ -38,3 +38,11 @@
   segunda opinión que no decide. Evaluación preliminar 2024: empata con una ESPN calibrada.
 - ESTADO: la decisión 19 (validación) ahora compara contra ESPN calibrada.
 - HUECO RESUELTO: los waivers de la liga se procesan a las 17:00 de Sídney (07:00 UTC).
+
+## 2026-10-01
+- HITO: fase 3 completa (modelo v2 con contexto del partido y protocolo de validación con
+  registro congelado y huella). **Validación sellada 2025 corrida una vez: no pasó** (MAE
+  6.37 vs 6.31 de ESPN calibrada). El modelo queda como segunda opinión; se valida en vivo
+  con 2026 (decisión 23).
+- ESTADO: fases 0, 1 y 3 en producción; fase 2 (ejecución en ESPN) sin empezar. Arranque
+  de la próxima sesión en `docs/ESTADO.md`.

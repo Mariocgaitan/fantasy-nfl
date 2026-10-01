@@ -37,18 +37,17 @@ restricción que define el proyecto, las decisiones cerradas y las preguntas abi
 
 ### Por dónde empezar
 
-1. **Hay prisa real.** La temporada está corriendo y la versión provisional tiene que
-   estar lista para la **semana 4 o 5 de la NFL**. La semana 4 arranca el jueves
-   2026-10-01 (viernes en Sídney). Empieza por el **Bloque 1** de preguntas abiertas.
-2. Luego el **Bloque 2** (validación), porque sin él el modelo no puede mandar.
-3. Los Bloques 3 (ejecución autorizada) y 4 (intercambios) van después.
-4. Pregunta a Mario una cosa a la vez. Cuando una pregunta se cierre, súbela a
-   *Decisiones cerradas* y sácala de la lista.
-5. Cuando el diseño esté cerrado, usa `writing-plans` antes de tocar código.
+**Lee `docs/ESTADO.md` justo después de `PROYECTO.md`.** Ahí está qué fases están en
+producción, el resultado de la validación sellada (no pasó), los pendientes en orden y
+cómo operar el reporte. Las preguntas abiertas originales ya están todas cerradas
+(decisiones 12–24).
+
+Para trabajo nuevo: brainstorming → spec → `writing-plans` → ejecución en una rama con
+PR (Mario fusiona o pide fusionar). Pregunta a Mario una cosa a la vez.
 
 ### Qué no reabrir
 
-Las 11 decisiones cerradas de `PROYECTO.md`, en particular:
+Las decisiones cerradas de `PROYECTO.md`, en particular:
 - **Cero costo.**
 - **Nada se ejecuta en ESPN sin autorización de Mario** (los reemplazos condicionales son autorización previa).
 - **El modelo no manda sin pasar la validación contra ESPN.**

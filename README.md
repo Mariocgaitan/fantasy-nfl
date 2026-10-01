@@ -78,6 +78,8 @@ El elegido mejora a ESPN calibrada por solo **0.02 puntos por jugador y semana**
 una señal muy débil y lo más probable es que **no** pase la validación oficial. El registro
 congelado está en `validacion/registro.json`.
 
-**La corrida sellada sobre 2025 todavía no se ha ejecutado.** Se corre una sola vez
-(`fantasy validar --sellado-final`), con visto bueno explícito. Si falla, el modelo sigue
-como segunda opinión y se valida en vivo con 2026 (`fantasy validar-en-vivo`).
+**Validación sellada sobre 2025 (corrida única, 2026-10-01): no pasó.** MAE del modelo
+6.366 contra 6.305 de ESPN calibrada (delta +0.061, IC95 [−0.007, +0.137]); solo en QB
+quedó ligeramente mejor. Resultado completo en `validacion/2025.json`. La mejora vista en
+2024 era ruido: exactamente lo que el sellado existe para detectar. El modelo sigue como
+segunda opinión y se valida en vivo con 2026 (`fantasy validar-en-vivo`, decisión 23).
