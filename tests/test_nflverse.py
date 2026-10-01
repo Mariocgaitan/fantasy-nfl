@@ -5,8 +5,8 @@ from fantasy.ingesta import nflverse
 
 WASHINGTON = 4432620  # id ESPN de Parker Washington
 CSV_COMPLETO = (b"player_id,season_type,week,targets,carries,pfr_player_id,offense_pct,"
-                b"gsis_id,pfr_id,espn_id,position\n"
-                b"g1,REG,1,3,0,p1,0.5,g1,p1,1,WR\n")
+                b"gsis_id,pfr_id,espn_id,position,opponent_team,target_share,air_yards_share\n"
+                b"g1,REG,1,3,0,p1,0.5,g1,p1,1,WR,KC,0.2,0.1\n")
 
 
 def test_uso_semanal_une_estadisticas_y_snaps(fixture_dir):
