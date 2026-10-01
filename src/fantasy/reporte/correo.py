@@ -9,7 +9,8 @@ SERVIDOR = ("smtp.gmail.com", 465)
 
 
 def resumen(r: Reporte) -> str:
-    lineas = [f"Semana {r.semana} · reporte {DIAS[r.tipo]} · SIN VALIDAR (decide ESPN)"]
+    sello = "VALIDADO (decide el modelo)" if r.validado else "SIN VALIDAR (decide ESPN)"
+    lineas = [f"Semana {r.semana} · reporte {DIAS[r.tipo]} · {sello}"]
     lineas.append("Alineación: " + (" · ".join(r.cambios) if r.cambios else "sin cambios"))
     if r.agencia:
         a = r.agencia[0]

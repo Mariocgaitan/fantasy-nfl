@@ -20,7 +20,8 @@
 </style>
 </head>
 <body>
-<p class="sinvalidar">SIN VALIDAR — decide la proyección de ESPN</p>
+{% if validado %}<p class="sinvalidar">VALIDADO ({{ validado }}) — decide el modelo</p>
+{% else %}<p class="sinvalidar">SIN VALIDAR — decide la proyección de ESPN</p>{% endif %}
 <h1>Semana {{ semana }} · reporte {{ dia }}</h1>
 <p class="suave">Generado {{ generado }} (Sídney) · proyección de titulares {{ esperado }}</p>
 
@@ -29,13 +30,13 @@
 {% if cambios %}<p><strong>Cambios:</strong> {{ cambios | join(" · ") }}</p>
 {% else %}<p>Tu alineación actual ya es la óptima.</p>{% endif %}
 <table>
-  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th>{% if con_modelo %}<th class="num">Modelo</th>{% endif %}<th>Estado</th></tr>
+  <tr><th>Lugar</th><th>Jugador</th><th class="num">Proy.</th>{% if validado %}<th class="num">ESPN</th>{% elif con_modelo %}<th class="num">Modelo</th>{% endif %}<th>Estado</th></tr>
   {% for f in alineacion %}
   <tr><td>{{ f.slot }}</td><td>{{ f.nombre }} <small>{{ f.pos }}</small>{% if f.bloqueado %} 🔒{% endif %}</td>
-      <td class="num">{{ f.proy }}</td>{% if con_modelo %}<td class="num">{% if f.modelo is not none %}{{ f.modelo }}{% if f.discrepa %} ⚑{% endif %}{% else %}—{% endif %}</td>{% endif %}<td>{{ f.estado }}</td></tr>
+      <td class="num">{{ f.proy }}</td>{% if validado %}<td class="num">{{ f.espn }}{% if f.discrepa %} ⚑{% endif %}</td>{% elif con_modelo %}<td class="num">{% if f.modelo is not none %}{{ f.modelo }}{% if f.discrepa %} ⚑{% endif %}{% else %}—{% endif %}</td>{% endif %}<td>{{ f.estado }}</td></tr>
   {% endfor %}
 </table>
-{% if con_modelo %}<p class="suave">Modelo: segunda opinión sin validar; no cambia la alineación. Por ahora casi siempre queda cerca de ESPN (un poco por debajo). ⚑ = difiere de ESPN por más de 3 puntos.</p>{% endif %}
+{% if validado %}<p class="suave">ESPN: segunda opinión. ⚑ = difiere del modelo por más de 3 puntos.</p>{% elif con_modelo %}<p class="suave">Modelo: segunda opinión sin validar; no cambia la alineación. Por ahora casi siempre queda cerca de ESPN (un poco por debajo). ⚑ = difiere de ESPN por más de 3 puntos.</p>{% endif %}
 
 <h2>Si alguien queda inactivo</h2>
 <table>
