@@ -95,7 +95,8 @@
    "delta": 0.037477480399365604
   }
  ],
- "modelo": "modelos\\modelo_v2.joblib",
- "fecha": "2026-10-01T01:37:45.517934+00:00",
- "commit": "240721b34390f883fc4a0131158ec7f6ca7e7d95"
+ "modelo": "modelos/modelo_v2.joblib",
+ "sha256": "1056193d6df9304849ef6890d5d5f70a079ab440795a17eedca117aaaa16c324",
+ "fecha": "2026-10-01T01:54:52.488358+00:00",
+ "commit": "1f429c738d6025432e83bcb95fc48dda646c5ac6"
 }
