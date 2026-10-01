@@ -73,10 +73,16 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     modelo, aviso_modelo = prediccion_modelo(crudos, TEMPORADA, semana, ruta)
     if aviso_modelo:
         avisos.append(aviso_modelo)
-    estado_val = estado_validacion(ruta_validacion or RUTA_VALIDACION)
+    estado_val = estado_validacion(ruta_validacion or RUTA_VALIDACION, ruta)
     espn_semana = dict(zip(tablas[semana].jugador_id, tablas[semana].proy, strict=True))
-    if estado_val["manda"] and modelo:
-        # Validado: la proyección de la semana objetivo es la del modelo (decisión 19).
+    manda = estado_val["manda"] and bool(modelo)
+    if estado_val["manda"] and not modelo:
+        avisos.append("El modelo está validado pero hoy no pudo predecir: decide ESPN.")
+    if manda:
+        # Validado (spec 10.7): todo pasa a ESPN calibrada y la semana objetivo usa al modelo.
+        for tw in tablas.values():
+            tw["proy"] = tw["proy"] * estado_val["k"]
+            tw["esperado"] = tw["proy"] * tw["p_jugar"]
         t0 = tablas[semana]
         nueva = t0["jugador_id"].map(modelo)
         t0["proy"] = nueva.where(nueva.notna(), t0["proy"]).clip(lower=0.0)
@@ -166,5 +172,5 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         generado=ahora.tz_convert(ZONA).strftime("%Y-%m-%d %H:%M"),
         esperado=round(al.esperado, 1), alineacion=alineacion, cambios=cambios,
         reemplazos=remp, agencia=agencia, rol=rol, intercambios=propuestas, avisos=avisos,
-        validado=estado_val["fuente"] if estado_val["manda"] else None,
+        validado=estado_val["fuente"] if manda else None,
     )

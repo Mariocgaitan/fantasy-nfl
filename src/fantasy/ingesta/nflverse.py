@@ -77,7 +77,13 @@ def bajar_juegos(temporadas, *, abrir=urllib.request.urlopen, permitir_sellada=F
                  dormir=time.sleep) -> str:
     if SELLADA in temporadas and not permitir_sellada:
         raise ValueError("2025 está sellada para la validación final (decisión 20)")
-    df = _leer_csv(URL_JUEGOS, abrir, 3, 5.0, dormir)
+    try:
+        df = _leer_csv(URL_JUEGOS, abrir, 3, 5.0, dormir)
+    except pd.errors.ParserError as e:
+        raise DatosInvalidos(f"nflverse: juegos no es un CSV válido: {e}") from e
+    faltan = [c for c in ["game_type", *COLUMNAS_JUEGOS] if c not in df.columns]
+    if faltan:
+        raise DatosInvalidos(f"nflverse: juegos ya no trae las columnas {faltan}")
     df = df[(df["game_type"] == "REG") & df["season"].isin(temporadas)]
     return df[COLUMNAS_JUEGOS].to_csv(index=False)
 

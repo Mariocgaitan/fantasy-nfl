@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from fantasy.almacen import instantaneas
-from fantasy.config import EQUIPO_ID, LIGA_ID, TEMPORADA
+from fantasy.config import EQUIPO_ID, LIGA_ID, RUTA_MODELO_V2, RUTA_VALIDACION, TEMPORADA
 from fantasy.esquemas import DatosInvalidos
 from fantasy.horario import ZONA, slot_actual
 from fantasy.ingesta import nflverse
@@ -46,12 +46,8 @@ def _parser() -> argparse.ArgumentParser:
     va = sub.add_parser("validar", help="corrida única sobre 2025 (requiere --sellado-final)")
     va.add_argument("--sellado-final", action="store_true")
     va.add_argument("--raiz", type=Path, default=Path("historico"))
-    va.add_argument("--registro", type=Path, default=Path("validacion/registro.json"))
-    va.add_argument("--destino", type=Path, default=Path("validacion/2025.json"))
     vv = sub.add_parser("validar-en-vivo", help="aplica el criterio a 2026 con las instantáneas")
     vv.add_argument("--datos", type=Path, required=True)
-    vv.add_argument("--modelo", type=Path, default=Path("modelos/modelo_v2.joblib"))
-    vv.add_argument("--destino", type=Path, default=Path("validacion/2026_vivo.json"))
     return p
 
 
@@ -68,11 +64,14 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
         import json
 
         from fantasy.modelo import candidatos, validacion
-        previas = {s: instantaneas.cargar(c)
-                   for s, c in validacion.instantaneas_previas(a.datos).items()}
-        res = validacion.validar_en_vivo(candidatos.cargar_v2(a.modelo), previas,
-                                         instantaneas.cargar(validacion.ultima_instantanea(a.datos)),
-                                         a.destino)
+        previas, posteriores = {}, {}
+        for s, c in validacion.instantaneas_previas(a.datos).items():
+            previas[s] = instantaneas.cargar(c)
+            despues = validacion.instantanea_posterior(a.datos, s)
+            if despues is not None:
+                posteriores[s] = instantaneas.cargar(despues)
+        res = validacion.validar_en_vivo(candidatos.cargar_v2(RUTA_MODELO_V2), previas,
+                                         posteriores, RUTA_VALIDACION / "2026_vivo.json")
         print(json.dumps(res, indent=1, ensure_ascii=False))
         return 0
     if a.comando == "validar":
@@ -85,7 +84,7 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
 
         from fantasy.ingesta import historico
         from fantasy.modelo import candidatos, validacion, variables
-        registro = json.loads(a.registro.read_text(encoding="utf-8"))
+        registro = json.loads((RUTA_VALIDACION / "registro.json").read_text(encoding="utf-8"))
         previas = pd.concat([variables.desde_crudos_v2(historico.cargar_historico(a.raiz, t), t)
                              for t in (2023, 2024)], ignore_index=True)
 
@@ -95,13 +94,21 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             crudos["juegos"] = nflverse.bajar_juegos((2025,), permitir_sellada=True)
             return variables.desde_crudos_v2(crudos, 2025)
 
-        def git_limpio():
-            r = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True,
-                               check=False)
-            return r.stdout.strip() == ""
+        def git(*args):
+            return subprocess.run(["git", *args], capture_output=True, text=True, check=False)
 
-        res = validacion.validar_sellado(registro, candidatos.cargar_v2(Path(registro["modelo"])),
-                                         previas, obtener_2025, a.destino, git_limpio)
+        def git_limpio():
+            r = git("status", "--porcelain")
+            return r.returncode == 0 and r.stdout.strip() == ""
+
+        def src_igual(commit):
+            return git("diff", "--quiet", commit, "HEAD", "--", "src").returncode == 0
+
+        ruta = Path(registro["modelo"])
+        res = validacion.validar_sellado(
+            registro, candidatos.cargar_v2(ruta), previas, obtener_2025,
+            RUTA_VALIDACION / "2025.json", git_limpio=git_limpio, src_igual=src_igual,
+            ruta_modelo=ruta, head=git("rev-parse", "HEAD").stdout.strip())
         print(json.dumps(res, indent=1, ensure_ascii=False))
         return 0
     if a.comando == "seleccionar":
@@ -110,6 +117,7 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
 
         from fantasy.ingesta import historico
         from fantasy.modelo import calibracion, candidatos, seleccion, variables
+        from fantasy.modelo.estado import huella
         t23, t24 = (variables.desde_crudos_v2(historico.cargar_historico(a.raiz, t), t)
                     for t in (2023, 2024))
         comparacion = seleccion.comparar(t23, t24)
@@ -121,7 +129,8 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
                                 text=True).stdout.strip()
         registro = {"config": elegido["config"], "nombre": elegido["nombre"], "k": k,
                     "variables": variables.VARIABLES_V2, "comparacion_2024": comparacion,
-                    "modelo": str(a.modelo), "fecha": datetime.now(UTC).isoformat(),
+                    "modelo": a.modelo.as_posix(), "sha256": huella(a.modelo),
+                    "fecha": datetime.now(UTC).isoformat(),
                     "commit": commit}
         a.registro.parent.mkdir(parents=True, exist_ok=True)
         a.registro.write_text(json.dumps(registro, indent=1, ensure_ascii=False),

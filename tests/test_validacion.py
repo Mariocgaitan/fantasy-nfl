@@ -22,23 +22,34 @@ def _registro_y_modelo():
     previas = pd.concat([_temporada(2023, 0), _temporada(2024, 1)], ignore_index=True)
     config = {"tipo": "ridge", "alpha": 10}
     m = candidatos.entrenar_v2(previas, config, k=0.9)
-    return {"config": config, "k": 0.9}, m, previas
+    return {"config": config, "k": 0.9, "commit": "abc"}, m, previas
+
+
+def _guardado(tmp_path, m):
+    from fantasy.modelo.estado import huella
+    ruta = tmp_path / "m.joblib"
+    candidatos.guardar_v2(m, ruta)
+    return ruta, huella(ruta)
 
 
 def test_validar_sellado_corre_una_sola_vez(tmp_path):
     registro, m, previas = _registro_y_modelo()
+    ruta, sha = _guardado(tmp_path, m)
+    registro["sha256"] = sha
     destino = tmp_path / "2025.json"
+    otros = {"git_limpio": lambda: True, "src_igual": lambda c: True, "ruta_modelo": ruta}
     res = validacion.validar_sellado(registro, m, previas, lambda: _temporada(2025, 2),
-                                     destino, git_limpio=lambda: True)
+                                     destino, **otros)
     assert destino.exists() and "paso" in json.loads(destino.read_text(encoding="utf-8"))
     assert isinstance(res["paso"], bool)
     with pytest.raises(RuntimeError, match="ya se corrió"):
         validacion.validar_sellado(registro, m, previas, lambda: _temporada(2025, 2),
-                                   destino, git_limpio=lambda: True)
+                                   destino, **otros)
 
 
 def test_validar_sellado_exige_repo_limpio_y_modelo_registrado(tmp_path):
     registro, m, previas = _registro_y_modelo()
+    ruta, registro["sha256"] = _guardado(tmp_path, m)
     llamado = []
 
     def obtener():
@@ -47,11 +58,13 @@ def test_validar_sellado_exige_repo_limpio_y_modelo_registrado(tmp_path):
 
     with pytest.raises(RuntimeError, match="cambios"):
         validacion.validar_sellado(registro, m, previas, obtener, tmp_path / "a.json",
-                                   git_limpio=lambda: False)
+                                   git_limpio=lambda: False, src_igual=lambda c: True,
+                                   ruta_modelo=ruta)
     otro = dict(registro, k=0.95)  # Review Focus 4
     with pytest.raises(RuntimeError, match="registro"):
         validacion.validar_sellado(otro, m, previas, obtener, tmp_path / "b.json",
-                                   git_limpio=lambda: True)
+                                   git_limpio=lambda: True, src_igual=lambda c: True,
+                                   ruta_modelo=ruta)
     assert llamado == []  # 2025 nunca se tocó
 
 

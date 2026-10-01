@@ -15,8 +15,10 @@ def _calendario(primer_partido_ms):
 def _snap(raiz: Path, semana: int, nombre: str, primer_partido_ms: int):
     c = raiz / "instantaneas" / "2026" / f"sem{semana:02d}" / nombre
     c.mkdir(parents=True)
-    (c / "calendario.json.gz").write_bytes(
-        gzip.compress(json.dumps(_calendario(primer_partido_ms)).encode()))
+    for archivo in validacion.ARCHIVOS_NECESARIOS:
+        contenido = json.dumps(_calendario(primer_partido_ms)) if archivo.startswith(
+            "calendario") else "x"
+        (c / archivo).write_bytes(gzip.compress(contenido.encode()))
     return c
 
 

@@ -13,11 +13,11 @@ MARTES = pd.Timestamp("2026-09-30 01:40", tz="UTC")
 
 
 def test_estado(tmp_path):
-    assert estado_validacion(tmp_path) == {"manda": False, "fuente": None}
+    assert estado_validacion(tmp_path) == {"manda": False, "fuente": None, "k": 1.0}
     (tmp_path / "2025.json").write_text(json.dumps({"paso": False}), encoding="utf-8")
     assert estado_validacion(tmp_path)["manda"] is False
     (tmp_path / "2026_vivo.json").write_text(json.dumps({"paso": True}), encoding="utf-8")
-    assert estado_validacion(tmp_path) == {"manda": True, "fuente": "2026 en vivo"}
+    assert estado_validacion(tmp_path) == {"manda": True, "fuente": "2026 en vivo", "k": 1.0}
 
 
 def test_sin_validar_sigue_decidiendo_espn(tmp_path):
@@ -28,7 +28,10 @@ def test_sin_validar_sigue_decidiendo_espn(tmp_path):
 
 
 def test_cuando_manda_decide_el_modelo(tmp_path, monkeypatch):
-    (tmp_path / "2025.json").write_text(json.dumps({"paso": True}), encoding="utf-8")
+    from fantasy.config import RUTA_MODELO_V2
+    from fantasy.modelo.estado import huella
+    (tmp_path / "2025.json").write_text(
+        json.dumps({"paso": True, "sha256": huella(RUTA_MODELO_V2)}), encoding="utf-8")
 
     def prediccion_falsa(crudos, temporada, semana, ruta):
         from fantasy.ingesta import espn
