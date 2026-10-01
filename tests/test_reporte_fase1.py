@@ -51,3 +51,11 @@ def test_si_falla_la_busqueda_el_reporte_sale_igual(monkeypatch):
     r = armar(cargar(SEM4), MARTES, "martes", 5)
     assert r.intercambios == [] and r.alineacion
     assert any("intercambios" in a.lower() for a in r.avisos)
+
+
+def test_ningun_libre_sale_en_agencia_y_en_intercambios():
+    r = armar(cargar(SEM4), MARTES, "martes", 5)
+    pedidos = {a["pedir"] for a in r.agencia}
+    assert pedidos
+    for x in r.intercambios:
+        assert not pedidos & set(x["relleno"])

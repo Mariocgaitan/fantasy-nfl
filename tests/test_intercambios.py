@@ -111,3 +111,29 @@ def test_rival_con_pocos_jugadores_no_truena():
     chica = plantillas[~plantillas.jugador_id.isin([12, 13, 15, 16])]
     props = it.buscar(chica, jug, tablas, 5, adp, None, tope=7)
     assert all(x.rival == 4 for x in props)
+
+
+def _liga_con_dos_libres():
+    # Mario necesita completar 8 lugares: sin excluir, el relleno es el mejor libre (21).
+    plantillas, jug, tablas, adp = _liga_chica()
+    extra = _jug([{"jugador_id": 22, "nombre": "OTRO", "pos": "RB", "equipo_fantasy_id": 0,
+                   "disponibilidad": "LIBRE"}])
+    jug = pd.concat([jug, extra], ignore_index=True)
+    tablas = {w: _tabla(jug, {**dict(zip(t.jugador_id, t.proy)), 22: 3})
+              for w, t in tablas.items()}
+    return plantillas, jug, tablas, adp
+
+
+def test_libre_excluido_nunca_sale_de_relleno():
+    plantillas, jug, tablas, adp = _liga_con_dos_libres()
+    sin = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8)
+    assert any(21 in x.relleno for x in sin)
+    con = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8, excluir={21})
+    assert con and all(21 not in x.relleno for x in con)
+
+
+def test_excluir_no_infla_la_ganancia():
+    plantillas, jug, tablas, adp = _liga_con_dos_libres()
+    sin = {x.rival: x.ganancia for x in it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8)}
+    con = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8, excluir={21})
+    assert all(x.ganancia <= sin.get(x.rival, float("inf")) + 1e-9 for x in con)

@@ -127,13 +127,14 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
 
     por_id = jugadores.set_index("jugador_id")
     nombres = por_id.nombre
+    sugeridas = agencia_libre.recomendar(jugadores, tablas, mis_ids, semana,
+                                         intocables=intocables)
     agencia = [{
         "pedir": nombres[x.pedir], "pos": x.pos, "soltar": nombres[x.soltar],
         "lesion": por_id.loc[x.pedir, "lesion"],
         "estado": estado(por_id.loc[x.pedir, "lesion"]),
         "ganancia": round(float(x.ganancia), 1),
-    } for x in agencia_libre.recomendar(jugadores, tablas, mis_ids, semana,
-                                            intocables=intocables).itertuples()]
+    } for x in sugeridas.itertuples()]
 
     rol: list[dict] = []
     if all(k in crudos for k in ("semanal", "snaps", "jugadores")):
@@ -149,8 +150,10 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         equipos = {t["id"]: t["name"].strip() for t in liga["teams"]}
         rival = espn.rival_de(liga, equipo_id, semana)
         try:
+            # Agencia libre manda: sus libres no se reusan de relleno en los intercambios.
             encontradas = intercambios_mod.buscar(plantillas, jugadores, tablas, equipo_id,
-                                                  adp, rival)
+                                                  adp, rival,
+                                                  excluir=set(sugeridas.pedir.astype(int)))
         except Exception as e:  # noqa: BLE001 — un fallo aquí no tumba el resto del reporte
             encontradas = []
             avisos.append(f"No se pudieron calcular los intercambios: {type(e).__name__}: {e}")

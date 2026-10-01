@@ -39,7 +39,10 @@ def riesgo_veto(desbalance: float) -> str:
 
 
 def buscar(plantillas, jugadores, tablas, equipo_id, adp, rival_excluido, *, top_rival=5,
-           max_das=3, max_recibes=2, n_libres=6, max_propuestas=5, tope=14):
+           max_das=3, max_recibes=2, n_libres=6, max_propuestas=5, tope=14,
+           excluir=frozenset()):
+    """`excluir`: agentes libres reservados para agencia libre; no cuentan ni en tu plantilla
+    de referencia ni de relleno, para que la ganancia no repita la de agencia libre."""
     valuador = Valuador(tablas)
     resto = pd.concat(tablas.values()).groupby("jugador_id")["proy"].sum()
     memo: dict[frozenset, float] = {}
@@ -56,7 +59,8 @@ def buscar(plantillas, jugadores, tablas, equipo_id, adp, rival_excluido, *, top
     def total(ids) -> float:
         return float(sum(resto.get(i, 0.0) for i in ids))
 
-    libres = jugadores[(jugadores.disponibilidad != "EQUIPO") & (jugadores.lesion == "ACTIVE")]
+    libres = jugadores[(jugadores.disponibilidad != "EQUIPO") & (jugadores.lesion == "ACTIVE")
+                       & ~jugadores.jugador_id.isin(excluir)]
     libres = (libres.assign(r=libres.jugador_id.map(resto).fillna(0.0))
               .sort_values("r", ascending=False).jugador_id.head(n_libres).tolist())
 

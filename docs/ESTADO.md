@@ -45,7 +45,6 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
 
 ## Menores pendientes (de las revisiones)
 
-- Intercambios y agencia libre no se coordinan (un mismo libre puede salir en ambos).
 - La lesión solo cuenta en la semana objetivo; las futuras confían en ESPN.
 - El riesgo de veto casi siempre sale "bajo".
 - `fantasy evaluar` truena con años distintos de 2024; `comparar` calcula un bootstrap que no usa.
