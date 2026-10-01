@@ -1,0 +1,101 @@
+{
+ "config": {
+  "tipo": "ridge",
+  "alpha": 1
+ },
+ "nombre": "ridge(alpha=1)",
+ "k": 0.92,
+ "variables": [
+  "proy_espn",
+  "pts_prev",
+  "snaps_prev",
+  "targets_prev",
+  "acarreos_prev",
+  "n_prev",
+  "target_share_prev",
+  "air_share_prev",
+  "pts_equipo",
+  "spread_equipo",
+  "local",
+  "permitido_prev"
+ ],
+ "comparacion_2024": [
+  {
+   "config": {
+    "tipo": "ridge",
+    "alpha": 1
+   },
+   "nombre": "ridge(alpha=1)",
+   "mae_modelo": 6.252798442402395,
+   "mae_espn": 6.2734640716908725,
+   "delta": -0.020665629288477483
+  },
+  {
+   "config": {
+    "tipo": "ridge",
+    "alpha": 10
+   },
+   "nombre": "ridge(alpha=10)",
+   "mae_modelo": 6.253228799581744,
+   "mae_espn": 6.2734640716908725,
+   "delta": -0.020235272109128566
+  },
+  {
+   "config": {
+    "tipo": "ridge",
+    "alpha": 100
+   },
+   "nombre": "ridge(alpha=100)",
+   "mae_modelo": 6.253320853879223,
+   "mae_espn": 6.2734640716908725,
+   "delta": -0.020143217811649627
+  },
+  {
+   "config": {
+    "tipo": "hgb",
+    "max_depth": 3,
+    "max_iter": 100
+   },
+   "nombre": "hgb(depth=3,iter=100)",
+   "mae_modelo": 6.2593395324768055,
+   "mae_espn": 6.2734640716908725,
+   "delta": -0.014124539214066978
+  },
+  {
+   "config": {
+    "tipo": "hgb",
+    "max_depth": 2,
+    "max_iter": 100
+   },
+   "nombre": "hgb(depth=2,iter=100)",
+   "mae_modelo": 6.2763941469033435,
+   "mae_espn": 6.2734640716908725,
+   "delta": 0.002930075212471017
+  },
+  {
+   "config": {
+    "tipo": "hgb",
+    "max_depth": 2,
+    "max_iter": 300
+   },
+   "nombre": "hgb(depth=2,iter=300)",
+   "mae_modelo": 6.295491405899333,
+   "mae_espn": 6.2734640716908725,
+   "delta": 0.02202733420846048
+  },
+  {
+   "config": {
+    "tipo": "hgb",
+    "max_depth": 3,
+    "max_iter": 300
+   },
+   "nombre": "hgb(depth=3,iter=300)",
+   "mae_modelo": 6.310941552090238,
+   "mae_espn": 6.2734640716908725,
+   "delta": 0.037477480399365604
+  }
+ ],
+ "modelo": "modelos\\modelo_v2.joblib",
+ "fecha": "2026-10-01T01:37:45.517934+00:00",
+ "commit": "240721b34390f883fc4a0131158ec7f6ca7e7d95"
+}
