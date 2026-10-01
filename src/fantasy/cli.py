@@ -39,6 +39,10 @@ def _parser() -> argparse.ArgumentParser:
     ev = sub.add_parser("evaluar", help="walk-forward contra ESPN (preliminar)")
     ev.add_argument("--temporada", type=int, required=True)
     ev.add_argument("--raiz", type=Path, default=Path("historico"))
+    se = sub.add_parser("seleccionar", help="elige el modelo v2 en 2024 y lo registra")
+    se.add_argument("--raiz", type=Path, default=Path("historico"))
+    se.add_argument("--registro", type=Path, default=Path("validacion/registro.json"))
+    se.add_argument("--modelo", type=Path, default=Path("modelos/modelo_v2.joblib"))
     return p
 
 
@@ -50,6 +54,33 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
             historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando == "seleccionar":
+        import json
+        import subprocess
+
+        from fantasy.ingesta import historico
+        from fantasy.modelo import calibracion, candidatos, seleccion, variables
+        t23, t24 = (variables.desde_crudos_v2(historico.cargar_historico(a.raiz, t), t)
+                    for t in (2023, 2024))
+        comparacion = seleccion.comparar(t23, t24)
+        elegido = comparacion[0]
+        ambas = pd.concat([t23, t24], ignore_index=True)
+        k = calibracion.factor(ambas)
+        candidatos.guardar_v2(candidatos.entrenar_v2(ambas, elegido["config"], k), a.modelo)
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, check=False,
+                                text=True).stdout.strip()
+        registro = {"config": elegido["config"], "nombre": elegido["nombre"], "k": k,
+                    "variables": variables.VARIABLES_V2, "comparacion_2024": comparacion,
+                    "modelo": str(a.modelo), "fecha": datetime.now(UTC).isoformat(),
+                    "commit": commit}
+        a.registro.parent.mkdir(parents=True, exist_ok=True)
+        a.registro.write_text(json.dumps(registro, indent=1, ensure_ascii=False),
+                              encoding="utf-8")
+        for x in comparacion:
+            print(f"{x['nombre']:24} MAE {x['mae_modelo']:.3f} · ESPN cal {x['mae_espn']:.3f}"
+                  f" · delta {x['delta']:+.3f}")
+        print(f"Elegido: {elegido['nombre']} · k = {k}")
         return 0
     if a.comando in ("entrenar", "evaluar"):
         from fantasy.ingesta import historico
