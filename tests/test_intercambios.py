@@ -70,9 +70,27 @@ def test_nunca_propone_al_rival_de_la_semana():
 
 
 def test_riesgo_de_veto():
-    assert it.riesgo_veto(0.30) == "alto"
-    assert it.riesgo_veto(0.15) == "medio"
+    assert it.riesgo_veto(0.45) == "alto"
+    assert it.riesgo_veto(0.30) == "medio"
+    assert it.riesgo_veto(0.10) == "bajo"
     assert it.riesgo_veto(-0.50) == "bajo"
+
+
+def test_solo_cuenta_lo_que_supera_al_mejor_libre():
+    resto = {1: 200.0, 2: 150.0, 3: 140.0}
+    pos = {1: "WR", 2: "RB", 3: "RB"}
+    reemplazo = {"WR": 170.0, "RB": 145.0}
+    assert it.sobre_libre([1, 2, 3], resto, pos, reemplazo) == 35.0  # 30 + 5 + 0
+
+
+def test_varios_de_relleno_por_una_estrella_es_alto():
+    # Das dos que rinden como un libre (valen 0) por uno que vale 35 sobre el libre.
+    assert it.riesgo_veto(it.desbalance(dar=0.0, recibir=35.0)) == "alto"
+
+
+def test_uno_por_uno_parejo_es_bajo():
+    assert it.riesgo_veto(it.desbalance(dar=100.0, recibir=108.0)) == "bajo"
+    assert it.desbalance(dar=0.0, recibir=0.0) == 0.0
 
 
 def test_semana4_real_rapido_y_sin_norway():
@@ -111,3 +129,42 @@ def test_rival_con_pocos_jugadores_no_truena():
     chica = plantillas[~plantillas.jugador_id.isin([12, 13, 15, 16])]
     props = it.buscar(chica, jug, tablas, 5, adp, None, tope=7)
     assert all(x.rival == 4 for x in props)
+
+
+def _liga_con_dos_libres():
+    # Mario necesita completar 8 lugares: sin excluir, el relleno es el mejor libre (21).
+    plantillas, jug, tablas, adp = _liga_chica()
+    extra = _jug([{"jugador_id": 22, "nombre": "OTRO", "pos": "RB", "equipo_fantasy_id": 0,
+                   "disponibilidad": "LIBRE"}])
+    jug = pd.concat([jug, extra], ignore_index=True)
+    tablas = {w: _tabla(jug, {**dict(zip(t.jugador_id, t.proy)), 22: 3})
+              for w, t in tablas.items()}
+    return plantillas, jug, tablas, adp
+
+
+def test_libre_excluido_nunca_sale_de_relleno():
+    plantillas, jug, tablas, adp = _liga_con_dos_libres()
+    sin = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8)
+    assert any(21 in x.relleno for x in sin)
+    con = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8, excluir={21})
+    assert con and all(21 not in x.relleno for x in con)
+
+
+def test_excluir_no_infla_la_ganancia():
+    plantillas, jug, tablas, adp = _liga_con_dos_libres()
+    sin = {x.rival: x.ganancia for x in it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8)}
+    con = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=8, excluir={21})
+    assert all(x.ganancia <= sin.get(x.rival, float("inf")) + 1e-9 for x in con)
+
+
+def test_el_riesgo_de_la_propuesta_usa_el_valor_sobre_el_libre():
+    plantillas, jug, tablas, adp = _liga_chica()
+    x = it.buscar(plantillas, jug, tablas, 5, adp, None, tope=7)[0]
+    futuro = pd.concat(tablas.values())
+    resto = futuro.groupby("jugador_id")["proy"].sum().to_dict()
+    pos = dict(zip(jug.jugador_id, jug.pos))
+    reemplazo = {"RB": resto[21]}  # el único libre sano
+    esperado = it.desbalance(it.sobre_libre(x.das, resto, pos, reemplazo),
+                             it.sobre_libre(x.recibes, resto, pos, reemplazo))
+    assert x.desbalance == pytest.approx(esperado, abs=1e-3)
+    assert x.riesgo_veto == it.riesgo_veto(x.desbalance)

@@ -31,15 +31,30 @@ def nombre(adp: float | None) -> float:
 
 
 def riesgo_veto(desbalance: float) -> str:
-    if desbalance > 0.25:
+    # Cortes sin validar: el único dato real (Hall + Swift + Collins por Amon-Ra, 0.11) no se vetó.
+    if desbalance > 0.40:
         return "alto"
-    if desbalance > 0.10:
+    if desbalance > 0.15:
         return "medio"
     return "bajo"
 
 
+def sobre_libre(ids, resto, pos, reemplazo) -> float:
+    """Puntos de aquí al final por encima del mejor libre sano de su posición: lo que rinde
+    igual que un libre no vale nada en un intercambio, cualquiera lo pide gratis."""
+    return float(sum(max(resto.get(i, 0.0) - reemplazo.get(pos.get(i), 0.0), 0.0) for i in ids))
+
+
+def desbalance(dar: float, recibir: float) -> float:
+    """Cuánto más recibes que das, como fracción del lado mayor (entre -1 y 1)."""
+    return (recibir - dar) / max(dar, recibir, 1.0)
+
+
 def buscar(plantillas, jugadores, tablas, equipo_id, adp, rival_excluido, *, top_rival=5,
-           max_das=3, max_recibes=2, n_libres=6, max_propuestas=5, tope=14):
+           max_das=3, max_recibes=2, n_libres=6, max_propuestas=5, tope=14,
+           excluir=frozenset()):
+    """`excluir`: agentes libres reservados para agencia libre; no cuentan ni en tu plantilla
+    de referencia ni de relleno, para que la ganancia no repita la de agencia libre."""
     valuador = Valuador(tablas)
     resto = pd.concat(tablas.values()).groupby("jugador_id")["proy"].sum()
     memo: dict[frozenset, float] = {}
@@ -53,10 +68,15 @@ def buscar(plantillas, jugadores, tablas, equipo_id, adp, rival_excluido, *, top
     def fama(ids) -> float:
         return sum(nombre(adp.get(i)) for i in ids)
 
-    def total(ids) -> float:
-        return float(sum(resto.get(i, 0.0) for i in ids))
+    sanos = jugadores[(jugadores.disponibilidad != "EQUIPO") & (jugadores.lesion == "ACTIVE")]
+    pos = dict(zip(jugadores.jugador_id, jugadores.pos, strict=True))
+    reemplazo = sanos.assign(r=sanos.jugador_id.map(resto).fillna(0.0)).groupby("pos").r.max()
+    reemplazo = reemplazo.to_dict()
 
-    libres = jugadores[(jugadores.disponibilidad != "EQUIPO") & (jugadores.lesion == "ACTIVE")]
+    def valor_mercado(ids) -> float:
+        return sobre_libre(ids, resto, pos, reemplazo)
+
+    libres = sanos[~sanos.jugador_id.isin(excluir)]
     libres = (libres.assign(r=libres.jugador_id.map(resto).fillna(0.0))
               .sort_values("r", ascending=False).jugador_id.head(n_libres).tolist())
 
@@ -113,11 +133,10 @@ def buscar(plantillas, jugadores, tablas, equipo_id, adp, rival_excluido, *, top
                         ganancia = round(val(nueva) - base_mia, 6)
                         if ganancia <= 0 or (mejor and ganancia <= mejor.ganancia):
                             continue
-                        dar, recibir = total(das), total(recibes)
-                        desbalance = (recibir - dar) / max(dar, 1.0)
+                        desb = desbalance(valor_mercado(das), valor_mercado(recibes))
                         mejor = Propuesta(rival, das, recibes, relleno, sueltas, ganancia,
                                           round(d_rival, 1), round(d_nombre, 1),
-                                          round(desbalance, 3), riesgo_veto(desbalance))
+                                          round(desb, 3), riesgo_veto(desb))
         if mejor:
             mejores.append(mejor)
     mejores.sort(key=lambda x: -x.ganancia)
