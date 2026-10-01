@@ -59,6 +59,8 @@ def predecir_v2(m: ModeloV2, f: pd.DataFrame) -> pd.Series:
             g = f.loc[mask]
             pred[mask] = m.k * g["proy_espn"].to_numpy(float) + est.predict(
                 g[VARIABLES_V2].to_numpy(float))
+    # Sin proyección de ESPN (descansa o no juega) no hay nada que corregir: 0 puntos.
+    pred[f["proy_espn"] <= 0] = 0.0
     return pred
 
 

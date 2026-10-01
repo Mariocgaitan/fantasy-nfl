@@ -55,3 +55,14 @@ def test_uso_extendido():
     assert list(u.jugador_id.unique()) == [11]
     assert u.loc[2, "equipo"] == "LV" and u.loc[2, "rival"] == "DEN"
     assert u.loc[2, "target_share"] == 0.0
+
+
+def test_semanal_sin_columnas_nuevas_falla_en_la_descarga():
+    viejo = "player_id,position,season_type,week,targets,carries\n" "g1,WR,REG,1,3,0\n"
+
+    def abrir(url, timeout):
+        return Resp(viejo.encode() if "stats_player" in url else
+                    b"week,pfr_player_id,offense_pct,gsis_id,pfr_id,espn_id,position\n")
+
+    with pytest.raises(nflverse.DatosInvalidos, match="target_share"):
+        nflverse.bajar_nflverse(2026, abrir=abrir, dormir=lambda s: None)

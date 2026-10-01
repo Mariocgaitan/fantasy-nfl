@@ -25,7 +25,8 @@ COLUMNAS = {
     "jugadores": ["gsis_id", "pfr_id", "espn_id", "display_name", "position"],
 }
 REQUERIDAS = {  # lo que usa uso_semanal
-    "semanal": ["player_id", "season_type", "week", "targets", "carries"],
+    "semanal": ["player_id", "season_type", "week", "targets", "carries", "opponent_team",
+                "target_share", "air_yards_share"],
     "snaps": ["week", "pfr_player_id", "offense_pct"],
     "jugadores": ["gsis_id", "pfr_id", "espn_id"],
 }

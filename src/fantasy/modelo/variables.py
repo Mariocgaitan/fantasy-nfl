@@ -102,6 +102,17 @@ def filas_v2(base, uso_ext, equipos, lineas, perm_prev):
     return out
 
 
+def equipo_previo(uso_ext: pd.DataFrame, semanas) -> pd.DataFrame:
+    """Último equipo conocido antes de cada semana (nunca el de la semana que se predice)."""
+    partes = []
+    for w in semanas:
+        u = uso_ext[uso_ext.semana < w].sort_values("semana").groupby("jugador_id").tail(1)
+        partes.append(u[["jugador_id", "equipo"]].assign(semana=w))
+    if not partes:
+        return pd.DataFrame(columns=["jugador_id", "semana", "equipo"])
+    return pd.concat(partes, ignore_index=True)[["jugador_id", "semana", "equipo"]]
+
+
 def desde_crudos_v2(crudos, temporada, semanas=None, *, equipo_desde_espn=False):
     base = desde_crudos(crudos, temporada, semanas)
     leer = {n: pd.read_csv(io.StringIO(crudos[n]), low_memory=False)
@@ -119,5 +130,5 @@ def desde_crudos_v2(crudos, temporada, semanas=None, *, equipo_desde_espn=False)
         equipos = pd.concat([eq.assign(semana=w) for w in base.semana.unique()],
                             ignore_index=True)
     else:
-        equipos = uso_ext[["jugador_id", "semana", "equipo"]]
+        equipos = equipo_previo(uso_ext, sorted(base.semana.unique()))
     return filas_v2(base, uso_ext, equipos, lineas, perm_prev)

@@ -66,3 +66,15 @@ def test_desde_crudos_v2_en_vivo():
     assert len(f) > 200 and not f[v.VARIABLES_V2].isna().any().any()
     con_partido = f[f.proy_espn > 0]
     assert con_partido.pts_equipo.isin([22.5, 21.5, v.NEUTROS["pts_equipo"]]).all()
+
+
+def test_equipo_previo_no_usa_la_semana_que_se_predice():
+    # Revisión: el equipo de la semana w no puede salir de las estadísticas de la semana w
+    # (delataría si jugó). Se usa el último equipo conocido antes de w.
+    uso_ext = pd.DataFrame({"jugador_id": [1, 1, 2], "semana": [1, 3, 3],
+                            "equipo": ["KC", "LV", "SF"], "rival": ["A", "B", "C"],
+                            "target_share": 0.1, "air_yards_share": 0.1})
+    eq = v.equipo_previo(uso_ext, [3, 4]).set_index(["jugador_id", "semana"]).equipo
+    assert eq[(1, 3)] == "KC"           # en la semana 3 todavía no sabemos que pasó a LV
+    assert eq[(1, 4)] == "LV"
+    assert (2, 3) not in eq.index       # sin partidos previos: sin equipo (neutro)

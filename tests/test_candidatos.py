@@ -49,3 +49,10 @@ def test_no_entrena_con_fuga():
     f.loc[0, "semana_fuente_max"] = 5
     with pytest.raises(FugaDeDatos):
         c.entrenar_v2(f, c.CONFIGS[0], k=1.0)
+
+
+def test_sin_proyeccion_de_espn_predice_cero():
+    f = _datos()
+    m = c.entrenar_v2(f, c.CONFIGS[0], k=0.95)
+    g = f.head(8).assign(proy_espn=0.0)
+    assert (c.predecir_v2(m, g) == 0.0).all()
