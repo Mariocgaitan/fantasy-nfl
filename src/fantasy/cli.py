@@ -48,6 +48,10 @@ def _parser() -> argparse.ArgumentParser:
     va.add_argument("--raiz", type=Path, default=Path("historico"))
     va.add_argument("--registro", type=Path, default=Path("validacion/registro.json"))
     va.add_argument("--destino", type=Path, default=Path("validacion/2025.json"))
+    vv = sub.add_parser("validar-en-vivo", help="aplica el criterio a 2026 con las instantáneas")
+    vv.add_argument("--datos", type=Path, required=True)
+    vv.add_argument("--modelo", type=Path, default=Path("modelos/modelo_v2.joblib"))
+    vv.add_argument("--destino", type=Path, default=Path("validacion/2026_vivo.json"))
     return p
 
 
@@ -59,6 +63,17 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
             historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando == "validar-en-vivo":
+        import json
+
+        from fantasy.modelo import candidatos, validacion
+        previas = {s: instantaneas.cargar(c)
+                   for s, c in validacion.instantaneas_previas(a.datos).items()}
+        res = validacion.validar_en_vivo(candidatos.cargar_v2(a.modelo), previas,
+                                         instantaneas.cargar(validacion.ultima_instantanea(a.datos)),
+                                         a.destino)
+        print(json.dumps(res, indent=1, ensure_ascii=False))
         return 0
     if a.comando == "validar":
         if not a.sellado_final:
