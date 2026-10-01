@@ -1,0 +1,8 @@
+ridge(alpha=1)           MAE 6.253 · ESPN cal 6.273 · delta -0.021
+ridge(alpha=10)          MAE 6.253 · ESPN cal 6.273 · delta -0.020
+ridge(alpha=100)         MAE 6.253 · ESPN cal 6.273 · delta -0.020
+hgb(depth=3,iter=100)    MAE 6.259 · ESPN cal 6.273 · delta -0.014
+hgb(depth=2,iter=100)    MAE 6.276 · ESPN cal 6.273 · delta +0.003
+hgb(depth=2,iter=300)    MAE 6.295 · ESPN cal 6.273 · delta +0.022
+hgb(depth=3,iter=300)    MAE 6.311 · ESPN cal 6.273 · delta +0.037
+Elegido: ridge(alpha=1) · k = 0.92

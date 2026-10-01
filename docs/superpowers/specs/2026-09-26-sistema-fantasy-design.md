@@ -274,3 +274,72 @@ semana 4).
 - **En el reporte**: columna "Modelo" en la alineación y ⚑ cuando difiere de ESPN por más
   de 3 puntos. No cambia ninguna decisión (decisión 15). Si falta el modelo o el uso de
   nflverse, la columna no aparece y el reporte lo avisa.
+
+## 10. Fase 3 — modelo serio y validación (aprobado 2026-09-30)
+
+### 10.1 Objetivo
+Un modelo que le gane a **ESPN calibrada** según la decisión 19, para que pase a decidir.
+Se desarrolla y elige **solo con 2023–2024**; **2025 se corre una vez**, con visto bueno de
+Mario; si falla, se valida en vivo con 2026 (decisión 23).
+
+### 10.2 Datos y variables
+Una fila por jugador y semana. Para la semana w solo se usa información anterior al partido
+(las líneas de apuestas de la semana w existen antes del partido; todo lo demás sale de
+semanas < w de la misma temporada). Variables:
+- **ESPN**: `proy_espn` y `espn_cal = k · proy_espn` (k de 10.3).
+- **Uso** (promedio de partidos previos): snaps %, targets, acarreos, **% de targets**,
+  **% de air yards**, puntos reales de ESPN, número de partidos.
+- **Contexto del partido** (nflverse `games.csv`, sin filas de 2025): puntos esperados del
+  equipo = (total ± spread)/2 (`spread_line` > 0 = local favorito), spread desde el punto
+  de vista del equipo, local/visitante.
+- **Rival**: puntos PPR (nflverse) que el rival ha permitido a esa posición, promedio por
+  partido en semanas < w.
+- **Equipo del jugador**: en el histórico, el de nflverse en esa semana; en vivo, el de ESPN
+  (`proTeamId`), con las abreviaturas de ESPN traducidas a nflverse (LAR→LA, WSH→WAS).
+- Matiz documentado: en el histórico la línea es la de cierre; en vivo, la del momento del
+  reporte.
+- La regla anti-fuga de la fase 1 se mantiene (`semana_fuente_max < semana`).
+
+### 10.3 ESPN calibrada
+`k` = factor en [0.80, 1.10] (paso 0.005) que minimiza el MAE de `k · proy_espn` en los
+jugadores relevantes de las temporadas anteriores a la evaluada. Es la referencia del
+criterio y la base del modelo.
+
+### 10.4 Modelo
+Por posición, el modelo predice la **corrección** `real − espn_cal`; la predicción final es
+`espn_cal + corrección`. Candidatos:
+- ridge con α ∈ {1, 10, 100} (variables estandarizadas);
+- `HistGradientBoostingRegressor(loss="absolute_error", learning_rate=0.05)` con
+  `max_depth` ∈ {2, 3} y `max_iter` ∈ {100, 300}.
+
+**Regla de elección fijada de antemano**: la configuración (la misma para las 4
+posiciones) con menor MAE en el walk-forward de 2024 (semanas 3–17, entrenando con 2023
+completo + semanas anteriores de 2024). El modelo final se entrena con 2023–2024 y se guarda
+con joblib en `modelos/modelo_v2.joblib`, junto a sus metadatos.
+
+### 10.5 Registro y corrida sellada
+- `fantasy seleccionar` corre la comparación, entrena el modelo final y escribe
+  `validacion/registro.json`: configuración elegida, variables, `k` (2023–2024), MAE de
+  cada candidato en 2024, fecha y commit.
+- `fantasy validar --sellado-final` solo corre si existe el registro, el repo no tiene
+  cambios pendientes y no existe `validacion/2025.json`. Baja 2025 por primera vez, hace el
+  walk-forward de las semanas 3–17 con la configuración registrada (entrenando con
+  2023–2024 + semanas anteriores de 2025) contra `k · proy_espn` con el `k` registrado,
+  aplica el criterio de la decisión 19 y guarda `validacion/2025.json`. No se vuelve a correr.
+- **Se ejecuta solo con visto bueno explícito de Mario.**
+
+### 10.6 Validación en vivo 2026 (si falla 2025)
+`fantasy validar-en-vivo --datos <carpeta de la rama datos>`: por cada semana ≥ 5 con un
+reporte del domingo, toma de esa instantánea la proyección de ESPN y las variables, predice
+con el modelo congelado y compara contra los puntos reales de la instantánea más reciente.
+Con **8 semanas** aplica el criterio de la decisión 19 (con `k` estimado con 2023–2024) y
+guarda `validacion/2026_vivo.json`.
+
+### 10.7 Cuando el modelo manda
+Si `validacion/2025.json` o `validacion/2026_vivo.json` dice que pasó:
+- la **proyección de la semana objetivo** para alineación, reemplazos y agencia libre es
+  la del modelo (si un jugador no tiene predicción, se usa ESPN calibrada);
+- las semanas futuras (valor de resto de temporada) siguen con ESPN calibrada, porque el
+  modelo solo predice la semana siguiente;
+- el reporte cambia "SIN VALIDAR" por "VALIDADO (fuente)" y la segunda columna pasa a ser
+  ESPN.

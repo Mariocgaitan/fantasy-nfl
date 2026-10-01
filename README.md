@@ -50,3 +50,34 @@ calibrada, no ESPN tal cual. **2025 sigue sellado** para esa validación.
     uv run fantasy historico                  # baja 2023–2024 a historico/
     uv run fantasy entrenar                   # entrena y guarda modelos/modelo_v1.json
     uv run fantasy evaluar --temporada 2024   # walk-forward contra ESPN (2025 rechazado)
+
+## Fase 3: modelo serio y validación
+
+El modelo v2 predice la **corrección** a ESPN calibrada (ESPN × k, con k estimado en
+temporadas anteriores) usando, además del uso reciente, el contexto del partido: los
+puntos que las casas de apuestas esperan para el equipo, el spread, local o visitante, el
+% de targets y de air yards, y lo que la defensa rival ha permitido a esa posición. Todo
+con información anterior al partido; el equipo de cada jugador es el último conocido antes
+de la semana que se predice.
+
+Siete candidatos (ridge y gradient boosting con pérdida de error absoluto) se compararon en
+el walk-forward de 2024 con una regla fijada de antemano (gana el menor MAE):
+
+```
+ridge(alpha=1)           MAE 6.253 · ESPN cal 6.273 · delta -0.021
+ridge(alpha=10)          MAE 6.253 · ESPN cal 6.273 · delta -0.020
+ridge(alpha=100)         MAE 6.253 · ESPN cal 6.273 · delta -0.020
+hgb(depth=3,iter=100)    MAE 6.259 · ESPN cal 6.273 · delta -0.014
+hgb(depth=2,iter=100)    MAE 6.276 · ESPN cal 6.273 · delta +0.003
+hgb(depth=2,iter=300)    MAE 6.295 · ESPN cal 6.273 · delta +0.022
+hgb(depth=3,iter=300)    MAE 6.311 · ESPN cal 6.273 · delta +0.037
+Elegido: ridge(alpha=1) · k = 0.92
+```
+
+El elegido mejora a ESPN calibrada por solo **0.02 puntos por jugador y semana** en 2024: es
+una señal muy débil y lo más probable es que **no** pase la validación oficial. El registro
+congelado está en `validacion/registro.json`.
+
+**La corrida sellada sobre 2025 todavía no se ha ejecutado.** Se corre una sola vez
+(`fantasy validar --sellado-final`), con visto bueno explícito. Si falla, el modelo sigue
+como segunda opinión y se valida en vivo con 2026 (`fantasy validar-en-vivo`).

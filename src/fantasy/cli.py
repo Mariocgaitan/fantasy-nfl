@@ -10,9 +10,10 @@ from pathlib import Path
 import pandas as pd
 
 from fantasy.almacen import instantaneas
-from fantasy.config import EQUIPO_ID, LIGA_ID, TEMPORADA
+from fantasy.config import EQUIPO_ID, LIGA_ID, RUTA_MODELO_V2, RUTA_VALIDACION, TEMPORADA
 from fantasy.esquemas import DatosInvalidos
 from fantasy.horario import ZONA, slot_actual
+from fantasy.ingesta import nflverse
 from fantasy.ingesta.espn import bajar_espn
 from fantasy.ingesta.nflverse import bajar_nflverse
 from fantasy.reporte import correo
@@ -38,6 +39,15 @@ def _parser() -> argparse.ArgumentParser:
     ev = sub.add_parser("evaluar", help="walk-forward contra ESPN (preliminar)")
     ev.add_argument("--temporada", type=int, required=True)
     ev.add_argument("--raiz", type=Path, default=Path("historico"))
+    se = sub.add_parser("seleccionar", help="elige el modelo v2 en 2024 y lo registra")
+    se.add_argument("--raiz", type=Path, default=Path("historico"))
+    se.add_argument("--registro", type=Path, default=Path("validacion/registro.json"))
+    se.add_argument("--modelo", type=Path, default=Path("modelos/modelo_v2.joblib"))
+    va = sub.add_parser("validar", help="corrida única sobre 2025 (requiere --sellado-final)")
+    va.add_argument("--sellado-final", action="store_true")
+    va.add_argument("--raiz", type=Path, default=Path("historico"))
+    vv = sub.add_parser("validar-en-vivo", help="aplica el criterio a 2026 con las instantáneas")
+    vv.add_argument("--datos", type=Path, required=True)
     return p
 
 
@@ -46,9 +56,89 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     if a.comando == "historico":
         from fantasy.ingesta import historico
         for t in historico.TEMPORADAS_ENTRENAMIENTO:
-            historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t),
-                                        bajar_nflverse(t))
+            nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
+            historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando == "validar-en-vivo":
+        import json
+
+        from fantasy.modelo import candidatos, validacion
+        previas, posteriores = {}, {}
+        for s, c in validacion.instantaneas_previas(a.datos).items():
+            previas[s] = instantaneas.cargar(c)
+            despues = validacion.instantanea_posterior(a.datos, s)
+            if despues is not None:
+                posteriores[s] = instantaneas.cargar(despues)
+        res = validacion.validar_en_vivo(candidatos.cargar_v2(RUTA_MODELO_V2), previas,
+                                         posteriores, RUTA_VALIDACION / "2026_vivo.json")
+        print(json.dumps(res, indent=1, ensure_ascii=False))
+        return 0
+    if a.comando == "validar":
+        if not a.sellado_final:
+            print("La validación sellada corre una sola vez sobre 2025 y requiere el visto "
+                  "bueno de Mario. Repite con --sellado-final.", file=sys.stderr)
+            return 2
+        import json
+        import subprocess
+
+        from fantasy.ingesta import historico
+        from fantasy.modelo import candidatos, validacion, variables
+        registro = json.loads((RUTA_VALIDACION / "registro.json").read_text(encoding="utf-8"))
+        previas = pd.concat([variables.desde_crudos_v2(historico.cargar_historico(a.raiz, t), t)
+                             for t in (2023, 2024)], ignore_index=True)
+
+        def obtener_2025():
+            crudos = {"proyecciones": historico.bajar_espn_historico(2025, permitir_sellada=True)}
+            crudos |= bajar_nflverse(2025)
+            crudos["juegos"] = nflverse.bajar_juegos((2025,), permitir_sellada=True)
+            return variables.desde_crudos_v2(crudos, 2025)
+
+        def git(*args):
+            return subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+
+        def git_limpio():
+            r = git("status", "--porcelain")
+            return r.returncode == 0 and r.stdout.strip() == ""
+
+        def src_igual(commit):
+            return git("diff", "--quiet", commit, "HEAD", "--", "src").returncode == 0
+
+        ruta = Path(registro["modelo"])
+        res = validacion.validar_sellado(
+            registro, candidatos.cargar_v2(ruta), previas, obtener_2025,
+            RUTA_VALIDACION / "2025.json", git_limpio=git_limpio, src_igual=src_igual,
+            ruta_modelo=ruta, head=git("rev-parse", "HEAD").stdout.strip())
+        print(json.dumps(res, indent=1, ensure_ascii=False))
+        return 0
+    if a.comando == "seleccionar":
+        import json
+        import subprocess
+
+        from fantasy.ingesta import historico
+        from fantasy.modelo import calibracion, candidatos, seleccion, variables
+        from fantasy.modelo.estado import huella
+        t23, t24 = (variables.desde_crudos_v2(historico.cargar_historico(a.raiz, t), t)
+                    for t in (2023, 2024))
+        comparacion = seleccion.comparar(t23, t24)
+        elegido = comparacion[0]
+        ambas = pd.concat([t23, t24], ignore_index=True)
+        k = calibracion.factor(ambas)
+        candidatos.guardar_v2(candidatos.entrenar_v2(ambas, elegido["config"], k), a.modelo)
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, check=False,
+                                text=True).stdout.strip()
+        registro = {"config": elegido["config"], "nombre": elegido["nombre"], "k": k,
+                    "variables": variables.VARIABLES_V2, "comparacion_2024": comparacion,
+                    "modelo": a.modelo.as_posix(), "sha256": huella(a.modelo),
+                    "fecha": datetime.now(UTC).isoformat(),
+                    "commit": commit}
+        a.registro.parent.mkdir(parents=True, exist_ok=True)
+        a.registro.write_text(json.dumps(registro, indent=1, ensure_ascii=False),
+                              encoding="utf-8")
+        for x in comparacion:
+            print(f"{x['nombre']:24} MAE {x['mae_modelo']:.3f} · ESPN cal {x['mae_espn']:.3f}"
+                  f" · delta {x['delta']:+.3f}")
+        print(f"Elegido: {elegido['nombre']} · k = {k}")
         return 0
     if a.comando in ("entrenar", "evaluar"):
         from fantasy.ingesta import historico
@@ -98,6 +188,7 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             crudos = bajar_espn(TEMPORADA, LIGA_ID)
             try:
                 crudos |= bajar_nflverse(TEMPORADA)
+                crudos["juegos"] = nflverse.bajar_juegos((TEMPORADA,))
             except DatosInvalidos as e:
                 avisos.append(f"nflverse no disponible: {e}")
         reporte = armar(crudos, pd.Timestamp(ahora), tipo, EQUIPO_ID, avisos)

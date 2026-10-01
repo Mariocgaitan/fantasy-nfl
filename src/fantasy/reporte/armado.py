@@ -5,14 +5,22 @@ from pathlib import Path
 
 import pandas as pd
 
-from fantasy.config import RUTA_MODELO, SEMANA_FINAL, TEMPORADA, UMBRAL_DISCREPA
+from fantasy.config import (
+    RUTA_MODELO,
+    RUTA_MODELO_V2,
+    RUTA_VALIDACION,
+    SEMANA_FINAL,
+    TEMPORADA,
+    UMBRAL_DISCREPA,
+)
 from fantasy.decision import agencia_libre
 from fantasy.decision import intercambios as intercambios_mod
 from fantasy.decision.agencia_libre import ADP_INTOCABLE
 from fantasy.decision.alineacion import TITULARES, aplicar_regla_duda, optima, reemplazos
 from fantasy.horario import ZONA, semana_objetivo
 from fantasy.ingesta import espn, nflverse
-from fantasy.proyeccion.modelo import segunda_opinion
+from fantasy.modelo.estado import estado_validacion
+from fantasy.proyeccion.modelo import prediccion_modelo
 
 DIAS = {"martes": "del martes", "viernes": "del viernes", "domingo": "del domingo"}
 DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
@@ -42,11 +50,13 @@ class Reporte:
     agencia: list[dict]
     rol: list[dict]
     intercambios: list[dict] = field(default_factory=list)
+    validado: str | None = None
     avisos: list[str] = field(default_factory=list)
 
 
 def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
-          avisos: list[str] | None = None, ruta_modelo: Path | None = None) -> Reporte:
+          avisos: list[str] | None = None, ruta_modelo: Path | None = None,
+          ruta_validacion: Path | None = None) -> Reporte:
     avisos = list(avisos or [])
     liga = crudos["liga"]
     plantillas = espn.parsear_plantillas(liga)
@@ -59,6 +69,24 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
 
     mia = plantillas[plantillas.equipo_id == equipo_id]
     tablas = agencia_libre.tablas_por_semana(jugadores, proyecciones, partidos, mia, semana, ahora)
+    ruta = ruta_modelo or (RUTA_MODELO_V2 if RUTA_MODELO_V2.exists() else RUTA_MODELO)
+    modelo, aviso_modelo = prediccion_modelo(crudos, TEMPORADA, semana, ruta)
+    if aviso_modelo:
+        avisos.append(aviso_modelo)
+    estado_val = estado_validacion(ruta_validacion or RUTA_VALIDACION, ruta)
+    espn_semana = dict(zip(tablas[semana].jugador_id, tablas[semana].proy, strict=True))
+    manda = estado_val["manda"] and bool(modelo)
+    if estado_val["manda"] and not modelo:
+        avisos.append("El modelo está validado pero hoy no pudo predecir: decide ESPN.")
+    if manda:
+        # Validado (spec 10.7): todo pasa a ESPN calibrada y la semana objetivo usa al modelo.
+        for tw in tablas.values():
+            tw["proy"] = tw["proy"] * estado_val["k"]
+            tw["esperado"] = tw["proy"] * tw["p_jugar"]
+        t0 = tablas[semana]
+        nueva = t0["jugador_id"].map(modelo)
+        t0["proy"] = nueva.where(nueva.notna(), t0["proy"]).clip(lower=0.0)
+        t0["esperado"] = t0["proy"] * t0["p_jugar"]
     t = tablas[semana]
     mis_ids = set(mia.jugador_id)
     adp = espn.parsear_adp(liga)
@@ -67,18 +95,15 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     al = aplicar_regla_duda(optima(tm), tm)
     idx = tm.set_index("jugador_id")
 
-    modelo, aviso_modelo = segunda_opinion(crudos, TEMPORADA, semana, ruta_modelo or RUTA_MODELO)
-    if aviso_modelo:
-        avisos.append(aviso_modelo)
-
     alineacion = [{
         "slot": s, "nombre": idx.loc[j, "nombre"], "pos": idx.loc[j, "pos"],
         "proy": round(float(idx.loc[j, "proy"]), 1), "lesion": idx.loc[j, "lesion"],
         "estado": ("descansa" if pd.isna(idx.loc[j, "inicio_utc"])
                    else estado(idx.loc[j, "lesion"])),
         "bloqueado": bool(idx.loc[j, "bloqueado"]),
+        "espn": round(float(espn_semana.get(j, 0.0)), 1),
         "modelo": round(modelo[j], 1) if j in modelo else None,
-        "discrepa": j in modelo and abs(modelo[j] - float(idx.loc[j, "proy"])) > UMBRAL_DISCREPA,
+        "discrepa": j in modelo and abs(modelo[j] - float(espn_semana.get(j, 0.0))) > UMBRAL_DISCREPA,
     } for s, j in al.slots]
     actuales = set(tm.loc[tm.slot.isin(TITULARES), "jugador_id"])
     entran = [idx.loc[j, "nombre"] for j in al.ids() - actuales]
@@ -147,4 +172,5 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         generado=ahora.tz_convert(ZONA).strftime("%Y-%m-%d %H:%M"),
         esperado=round(al.esperado, 1), alineacion=alineacion, cambios=cambios,
         reemplazos=remp, agencia=agencia, rol=rol, intercambios=propuestas, avisos=avisos,
+        validado=estado_val["fuente"] if manda else None,
     )
