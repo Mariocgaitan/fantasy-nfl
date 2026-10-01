@@ -243,8 +243,11 @@ README con arquitectura y, al final, el resultado del backtest.
   agentes libres (greedy por `Valuador`), para no castigar los N-por-1.
 - **Aceptación**: Δ alineación del rival (ESPN) ≥ −15 y Δ nombre ≥ −3
   (nombre = 100·e^(−ADP/45), ADP de `ownership.averageDraftPosition` en la liga).
-- **Riesgo de veto** por el desbalance de proyección de ESPN del resto de la temporada
-  entre lo que recibe y lo que da Mario: > +25 % alto, +10 % a +25 % medio, si no bajo.
+- **Riesgo de veto** por el desbalance del valor sobre el libre (proyección ESPN del resto
+  de la temporada menos la del mejor libre sano de la posición, mínimo 0) entre lo que recibe
+  y lo que da Mario, dividido entre el lado mayor: > 0.40 alto, 0.15 a 0.40 medio, si no
+  bajo. (Antes se sumaba la proyección cruda y, como Mario casi siempre da más jugadores de
+  los que recibe, salía siempre "bajo"; cambiado el 2026-10-01.)
 - Se muestran hasta 5 propuestas, **una por rival**, con la nota "propón una a la vez".
 
 ### 9.2 La banca también vale como moneda de cambio

@@ -45,7 +45,6 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
 
 ## Menores pendientes (de las revisiones)
 
-- El riesgo de veto casi siempre sale "bajo".
 - `fantasy evaluar` truena con años distintos de 2024; `comparar` calcula un bootstrap que no usa.
 - La población en vivo (plantillas + top 150 libres) es menor que la histórica (top 1500).
 - `validar-en-vivo` no exige que 2025 se haya corrido (ya se corrió, así que no importa).
