@@ -48,13 +48,15 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
 - `fantasy evaluar` truena con años distintos de 2024; `comparar` calcula un bootstrap que no usa.
 - La población en vivo (plantillas + top 150 libres) es menor que la histórica (top 1500).
 - `validar-en-vivo` no exige que 2025 se haya corrido (ya se corrió, así que no importa).
-- El archivo de jugadores de nflverse está repetido 3 veces (93 KB c/u).
 
 ## Pendientes cerrados sin cambio de código
 
 - "La lesión solo cuenta en la semana objetivo": no hace falta. ESPN ya pone en 0 las
   semanas en que espera la baja (Caleb Williams 0 en semanas 4–5 y ~17 desde la 6; Achane
   0 hasta la 18). Aplicar `p_jugar` a semanas futuras contaría la lesión dos veces.
+- "El archivo de jugadores de nflverse está repetido 3 veces": no vale la pena. Ahorra
+  ~190 KB y obliga a tocar `ingesta/historico.py`, que alimenta al modelo congelado hasta la
+  validación en vivo; la copia del fixture debe quedarse (cada instantánea es autocontenida).
 
 ## La liga (rápido)
 
