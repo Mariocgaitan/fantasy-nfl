@@ -83,6 +83,10 @@ def bajar_juegos(temporadas, *, abrir=urllib.request.urlopen, permitir_sellada=F
 
 def uso_extendido(semanal: pd.DataFrame, jugadores: pd.DataFrame) -> pd.DataFrame:
     ids = jugadores.dropna(subset=["espn_id"])[["gsis_id", "espn_id"]]
+    semanal = semanal.copy()
+    for col in ("target_share", "air_yards_share", "opponent_team"):
+        if col not in semanal.columns:  # instantáneas viejas o cambio de formato
+            semanal[col] = None
     s = semanal[semanal["season_type"] == "REG"].merge(ids, left_on="player_id",
                                                         right_on="gsis_id")
     s = s.rename(columns={"espn_id": "jugador_id", "week": "semana", "team": "equipo",

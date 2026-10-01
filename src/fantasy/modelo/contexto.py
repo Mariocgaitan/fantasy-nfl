@@ -22,6 +22,8 @@ def lineas(juegos: pd.DataFrame) -> pd.DataFrame:
 
 
 def permitido(semanal: pd.DataFrame) -> pd.DataFrame:
+    if "opponent_team" not in semanal.columns:  # instantáneas viejas: sin dato del rival
+        return pd.DataFrame(columns=["rival", "semana", "pos", "pts"])
     s = semanal[(semanal["season_type"] == "REG") & semanal["position"].isin(POSICIONES)]
     g = s.groupby(["opponent_team", "week", "position"], as_index=False)["fantasy_points_ppr"].sum()
     return g.rename(columns={"opponent_team": "rival", "week": "semana", "position": "pos",

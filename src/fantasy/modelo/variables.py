@@ -1,8 +1,11 @@
 """Filas para el modelo: para la semana w, solo información de semanas anteriores."""
 
+import io
+
 import pandas as pd
 
 from fantasy.ingesta import espn, nflverse
+from fantasy.modelo import contexto
 
 VARIABLES = ["proy_espn", "pts_prev", "snaps_prev", "targets_prev", "acarreos_prev", "n_prev"]
 
@@ -60,3 +63,61 @@ def desde_crudos(crudos: dict, temporada: int, semanas=None) -> pd.DataFrame:
     else:
         uso = pd.DataFrame(columns=["jugador_id", "semana", "snaps_pct", "targets", "acarreos"])
     return filas(proy, reales, uso, pos, temporada, semanas)
+
+
+VARIABLES_V2 = VARIABLES + ["target_share_prev", "air_share_prev", "pts_equipo",
+                            "spread_equipo", "local", "permitido_prev"]
+NEUTROS = {"pts_equipo": 22.0, "spread_equipo": 0.0, "local": 0.5}
+
+
+def filas_v2(base, uso_ext, equipos, lineas, perm_prev):
+    partes = []
+    for w, b in base.groupby("semana"):
+        u = uso_ext[uso_ext.semana < w].groupby("jugador_id").agg(
+            target_share_prev=("target_share", "mean"),
+            air_share_prev=("air_yards_share", "mean"), fuente_s=("semana", "max"))
+        f = b.merge(u, on="jugador_id", how="left")
+        eq = equipos[equipos.semana == w][["jugador_id", "equipo"]].drop_duplicates("jugador_id")
+        f = f.merge(eq, on="jugador_id", how="left")
+        li = lineas[lineas.semana == w][["equipo", "rival", "local", "pts_equipo",
+                                         "spread_equipo"]]
+        f = f.merge(li, on="equipo", how="left")
+        pp = perm_prev[perm_prev.semana == w][["rival", "pos", "permitido_prev", "fuente"]]
+        f = f.merge(pp.rename(columns={"fuente": "fuente_p"}), on=["rival", "pos"], how="left")
+        partes.append(f)
+    f = pd.concat(partes, ignore_index=True)
+    f[["target_share_prev", "air_share_prev"]] = (
+        f[["target_share_prev", "air_share_prev"]].fillna(0.0))
+    for col, neutro in NEUTROS.items():
+        f[col] = f[col].fillna(neutro)
+    # Relleno con el promedio de la misma semana y posición (nunca de semanas futuras).
+    medias = f.groupby(["semana", "pos"])["permitido_prev"].transform("mean")
+    f["permitido_prev"] = f["permitido_prev"].fillna(medias).fillna(0.0)
+    f["semana_fuente_max"] = (f[["semana_fuente_max", "fuente_s", "fuente_p"]]
+                              .max(axis=1).fillna(0).astype(int))
+    cols = ["jugador_id", "temporada", "semana", "pos", *VARIABLES_V2, "semana_fuente_max",
+            "real"]
+    out = f[cols].reset_index(drop=True)
+    verificar_sin_fuga(out)
+    return out
+
+
+def desde_crudos_v2(crudos, temporada, semanas=None, *, equipo_desde_espn=False):
+    base = desde_crudos(crudos, temporada, semanas)
+    leer = {n: pd.read_csv(io.StringIO(crudos[n]), low_memory=False)
+            for n in ("semanal", "jugadores", "juegos")}
+    uso_ext = nflverse.uso_extendido(leer["semanal"], leer["jugadores"])
+    lineas = contexto.lineas(leer["juegos"][leer["juegos"].season == temporada])
+    perm_prev = contexto.permitido_previo(contexto.permitido(leer["semanal"]),
+                                          sorted(base.semana.unique()))
+    if equipo_desde_espn:
+        abrev = {t["id"]: contexto.a_nflverse(t["abbrev"])
+                 for t in crudos["calendario"]["settings"]["proTeams"]}
+        eq = pd.DataFrame([{"jugador_id": pe["id"],
+                            "equipo": abrev.get(pe["player"].get("proTeamId"))}
+                           for pe in crudos["proyecciones"]["players"]])
+        equipos = pd.concat([eq.assign(semana=w) for w in base.semana.unique()],
+                            ignore_index=True)
+    else:
+        equipos = uso_ext[["jugador_id", "semana", "equipo"]]
+    return filas_v2(base, uso_ext, equipos, lineas, perm_prev)
