@@ -43,6 +43,11 @@ def _parser() -> argparse.ArgumentParser:
     se.add_argument("--raiz", type=Path, default=Path("historico"))
     se.add_argument("--registro", type=Path, default=Path("validacion/registro.json"))
     se.add_argument("--modelo", type=Path, default=Path("modelos/modelo_v2.joblib"))
+    va = sub.add_parser("validar", help="corrida única sobre 2025 (requiere --sellado-final)")
+    va.add_argument("--sellado-final", action="store_true")
+    va.add_argument("--raiz", type=Path, default=Path("historico"))
+    va.add_argument("--registro", type=Path, default=Path("validacion/registro.json"))
+    va.add_argument("--destino", type=Path, default=Path("validacion/2025.json"))
     return p
 
 
@@ -54,6 +59,35 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
             historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando == "validar":
+        if not a.sellado_final:
+            print("La validación sellada corre una sola vez sobre 2025 y requiere el visto "
+                  "bueno de Mario. Repite con --sellado-final.", file=sys.stderr)
+            return 2
+        import json
+        import subprocess
+
+        from fantasy.ingesta import historico
+        from fantasy.modelo import candidatos, validacion, variables
+        registro = json.loads(a.registro.read_text(encoding="utf-8"))
+        previas = pd.concat([variables.desde_crudos_v2(historico.cargar_historico(a.raiz, t), t)
+                             for t in (2023, 2024)], ignore_index=True)
+
+        def obtener_2025():
+            crudos = {"proyecciones": historico.bajar_espn_historico(2025, permitir_sellada=True)}
+            crudos |= bajar_nflverse(2025)
+            crudos["juegos"] = nflverse.bajar_juegos((2025,), permitir_sellada=True)
+            return variables.desde_crudos_v2(crudos, 2025)
+
+        def git_limpio():
+            r = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True,
+                               check=False)
+            return r.stdout.strip() == ""
+
+        res = validacion.validar_sellado(registro, candidatos.cargar_v2(Path(registro["modelo"])),
+                                         previas, obtener_2025, a.destino, git_limpio)
+        print(json.dumps(res, indent=1, ensure_ascii=False))
         return 0
     if a.comando == "seleccionar":
         import json
