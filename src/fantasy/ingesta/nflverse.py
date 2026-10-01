@@ -18,7 +18,8 @@ ARCHIVOS = {
 }
 COLUMNAS = {
     "semanal": ["player_id", "player_display_name", "position", "team", "season", "week",
-                "season_type", "carries", "targets", "receptions", "fantasy_points_ppr"],
+                "season_type", "carries", "targets", "receptions", "fantasy_points_ppr",
+                "opponent_team", "target_share", "air_yards_share"],
     "snaps": ["season", "week", "player", "pfr_player_id", "position", "team",
               "offense_snaps", "offense_pct"],
     "jugadores": ["gsis_id", "pfr_id", "espn_id", "display_name", "position"],
@@ -63,6 +64,33 @@ def bajar_nflverse(temporada: int, *, abrir=urllib.request.urlopen, intentos: in
             df = df[df["espn_id"].notna()]
         crudos[nombre] = df.to_csv(index=False)
     return crudos
+
+
+URL_JUEGOS = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
+COLUMNAS_JUEGOS = ["season", "week", "gameday", "gametime", "home_team", "away_team",
+                   "spread_line", "total_line"]
+SELLADA = 2025
+
+
+def bajar_juegos(temporadas, *, abrir=urllib.request.urlopen, permitir_sellada=False,
+                 dormir=time.sleep) -> str:
+    if SELLADA in temporadas and not permitir_sellada:
+        raise ValueError("2025 está sellada para la validación final (decisión 20)")
+    df = _leer_csv(URL_JUEGOS, abrir, 3, 5.0, dormir)
+    df = df[(df["game_type"] == "REG") & df["season"].isin(temporadas)]
+    return df[COLUMNAS_JUEGOS].to_csv(index=False)
+
+
+def uso_extendido(semanal: pd.DataFrame, jugadores: pd.DataFrame) -> pd.DataFrame:
+    ids = jugadores.dropna(subset=["espn_id"])[["gsis_id", "espn_id"]]
+    s = semanal[semanal["season_type"] == "REG"].merge(ids, left_on="player_id",
+                                                        right_on="gsis_id")
+    s = s.rename(columns={"espn_id": "jugador_id", "week": "semana", "team": "equipo",
+                          "opponent_team": "rival"})
+    s[["target_share", "air_yards_share"]] = s[["target_share", "air_yards_share"]].fillna(0.0)
+    s["jugador_id"] = s["jugador_id"].astype("int64")
+    s["semana"] = s["semana"].astype("int64")
+    return s[["jugador_id", "semana", "equipo", "rival", "target_share", "air_yards_share"]]
 
 
 def uso_semanal(semanal: pd.DataFrame, snaps: pd.DataFrame,

@@ -37,6 +37,6 @@ def test_2025_esta_sellada(tmp_path):
 def test_guardar_y_cargar(tmp_path):
     espn = historico.bajar_espn_historico(2024, get=_get_falso)
     historico.guardar_historico(tmp_path, 2024, espn, {"semanal": "a\n1\n", "snaps": "b\n2\n",
-                                                       "jugadores": "c\n3\n"})
+                                                       "jugadores": "c\n3\n", "juegos": "d\n4\n"})
     c = historico.cargar_historico(tmp_path, 2024)
     assert c["proyecciones"] == espn and c["snaps"] == "b\n2\n"

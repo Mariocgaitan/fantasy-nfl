@@ -13,6 +13,7 @@ from fantasy.almacen import instantaneas
 from fantasy.config import EQUIPO_ID, LIGA_ID, TEMPORADA
 from fantasy.esquemas import DatosInvalidos
 from fantasy.horario import ZONA, slot_actual
+from fantasy.ingesta import nflverse
 from fantasy.ingesta.espn import bajar_espn
 from fantasy.ingesta.nflverse import bajar_nflverse
 from fantasy.reporte import correo
@@ -46,8 +47,8 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
     if a.comando == "historico":
         from fantasy.ingesta import historico
         for t in historico.TEMPORADAS_ENTRENAMIENTO:
-            historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t),
-                                        bajar_nflverse(t))
+            nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
+            historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
         return 0
     if a.comando in ("entrenar", "evaluar"):
@@ -98,6 +99,7 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             crudos = bajar_espn(TEMPORADA, LIGA_ID)
             try:
                 crudos |= bajar_nflverse(TEMPORADA)
+                crudos["juegos"] = nflverse.bajar_juegos((TEMPORADA,))
             except DatosInvalidos as e:
                 avisos.append(f"nflverse no disponible: {e}")
         reporte = armar(crudos, pd.Timestamp(ahora), tipo, EQUIPO_ID, avisos)
