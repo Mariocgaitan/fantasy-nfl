@@ -112,3 +112,24 @@ def test_reemplazos_respetan_horarios(semana3):
     assert "Christian Watson" not in r      # ya está bloqueado
     suplentes = [s for s in r.values() if s]
     assert len(suplentes) == len(set(suplentes))
+
+
+def test_reemplazos_dicen_por_que_no_hay_suplente():
+    import pandas as pd
+
+    from fantasy.decision.alineacion import optima, reemplazos
+    temprano = pd.Timestamp("2026-10-04 17:00", tz="UTC")
+    tarde = pd.Timestamp("2026-10-05 00:20", tz="UTC")
+    filas = [  # jugador_id, pos, esperado, inicio
+        (1, "QB", 20, temprano), (2, "RB", 18, tarde), (3, "RB", 15, temprano),
+        (4, "WR", 16, tarde), (5, "WR", 14, temprano), (6, "TE", 10, temprano),
+        (7, "WR", 13, temprano), (8, "WR", 9, temprano),
+    ]
+    t = pd.DataFrame([{"jugador_id": j, "nombre": f"J{j}", "pos": p, "proy": e, "esperado": e,
+                       "p_jugar": 1.0, "inicio_utc": i, "slot": "BANCA", "bloqueado": False,
+                       "lesion": "ACTIVE"} for j, p, e, i in filas])
+    al = optima(t)
+    motivo = {r.titular: r.motivo for r in reemplazos(al, t)}
+    assert motivo[2] == "sin_posicion"   # no hay RB en la banca
+    assert motivo[4] == "horario"        # los WR de la banca juegan antes
+    assert motivo[1] == "sin_posicion"   # no hay QB en la banca

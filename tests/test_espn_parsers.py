@@ -95,3 +95,10 @@ def test_falta_un_jugador_de_plantilla_en_proyecciones_falla(crudos):
     proy["players"] = [p for p in proy["players"] if p["id"] != mio]
     with pytest.raises(DatosInvalidos, match="sin proyección"):
         espn.parsear_jugadores(proy, crudos["liga"], crudos["agentes_libres"])
+
+
+def test_tope_plantilla_suma_titulares_y_banca_sin_ir(fixture_dir):
+    from fantasy.almacen.instantaneas import cargar
+    from fantasy.ingesta import espn
+    assert espn.tope_plantilla(cargar(fixture_dir)["liga"]) == 14
+    assert espn.tope_plantilla({"settings": {}}) == 14  # sin datos: el de la liga

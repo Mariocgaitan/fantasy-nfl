@@ -42,3 +42,19 @@ def reporte_que_toca(ahora: datetime) -> str | None:
 def semana_objetivo(semana_espn: int, partidos: pd.DataFrame, ahora: pd.Timestamp) -> int:
     ultimo = partidos.loc[partidos.semana == semana_espn, "inicio_utc"].max()
     return semana_espn + 1 if pd.notna(ultimo) and ultimo <= ahora else semana_espn
+
+
+WAIVERS = time(17, 0)  # hora de Sídney; todos los días menos martes
+
+
+def proximo_waiver(ahora: pd.Timestamp) -> pd.Timestamp:
+    """El próximo proceso de waivers después de `ahora`, en UTC."""
+    local = ahora.astimezone(ZONA)
+    for dias in range(8):
+        dia = local.date() + timedelta(days=dias)
+        if dia.weekday() == 1:  # martes: no hay proceso
+            continue
+        cuando = datetime.combine(dia, WAIVERS, tzinfo=ZONA)
+        if cuando > local:
+            return pd.Timestamp(cuando.astimezone(UTC))
+    raise AssertionError("siempre hay un proceso de waivers en la semana")

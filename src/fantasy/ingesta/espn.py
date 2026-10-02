@@ -101,6 +101,17 @@ def rival_de(liga: dict, equipo_id: int, semana: int) -> int | None:
     return None
 
 
+SLOTS_PLANTILLA = ("0", "2", "4", "6", "23", "20")  # titulares + banca; el IR no cuenta
+
+
+def tope_plantilla(liga: dict) -> int:
+    """Lugares de la plantilla sin contar IR (14 en esta liga)."""
+    cupos = ((liga.get("settings") or {}).get("rosterSettings") or {}).get("lineupSlotCounts")
+    if not cupos:
+        return MAX_PLANTILLA - 1
+    return sum(int(cupos.get(s, 0)) for s in SLOTS_PLANTILLA)
+
+
 def _dueno_pct(jugador: dict) -> tuple[float, float]:
     o = jugador.get("ownership") or {}
     return float(o.get("percentOwned", 0.0)), float(o.get("percentChange", 0.0))
