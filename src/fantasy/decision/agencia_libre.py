@@ -9,9 +9,11 @@ from fantasy.proyeccion.espn import tabla_semana
 SEGURO = 0.15          # fracción de sus puntos que vale un respaldo (sin validar)
 SEMANAS_SEGURO = 3
 SEGURO_POS = ("QB", "TE")  # RB y WR ya se cubren entre sí por el FLEX
+FUERA = ("OUT", "INJURY_RESERVE", "SUSPENSION")  # no se sugieren en "ganando rol"
 ADP_INTOCABLE = 60.0  # nombre alto: sirve para intercambios
-COLUMNAS_ROL = ["jugador_id", "nombre", "pos", "disponibilidad", "snaps_antes", "snaps_ahora",
-                "oport_antes", "oport_ahora", "dueno_pct", "dueno_cambio"]
+COLUMNAS_ROL = ["jugador_id", "nombre", "pos", "disponibilidad", "equipo_fantasy_id",
+                "snaps_antes", "snaps_ahora", "oport_antes", "oport_ahora", "dueno_pct",
+                "dueno_cambio"]
 
 
 def tablas_por_semana(jugadores, proyecciones, partidos, plantilla_mia, semana, ahora):
@@ -133,7 +135,10 @@ def recomendar(jugadores, tablas, mis_ids, semana, *, max_candidatos=30, max_sug
     return r.head(max_sugerencias).reset_index(drop=True)
 
 
-def ganando_rol(uso, jugadores, *, umbral_snaps=0.15, umbral_oport=3.0, max_cambio_dueno=1.0):
+def ganando_rol(uso, jugadores, *, plantillas=None, equipo_id=None, umbral_snaps=0.15,
+                umbral_oport=3.0, max_cambio_dueno=1.0):
+    """Libres a los que les sube el uso. Con `plantillas` y `equipo_id`, también los que están
+    en la banca de un rival: su dueño aún no los valora y salen baratos en un intercambio."""
     semanas = sorted(uso.semana.unique())
     if len(semanas) < 2:
         return pd.DataFrame(columns=COLUMNAS_ROL)
@@ -150,6 +155,11 @@ def ganando_rol(uso, jugadores, *, umbral_snaps=0.15, umbral_oport=3.0, max_camb
     sube = ((d.snaps_ahora - d.snaps_antes >= umbral_snaps)
             | (d.oport_ahora - d.oport_antes >= umbral_oport))
     d = d[sube].merge(jugadores, on="jugador_id")
-    d = d[(d.disponibilidad != "EQUIPO") & (d.dueno_cambio <= max_cambio_dueno)]
+    elegible = (d.disponibilidad != "EQUIPO") & ~d.lesion.isin(FUERA)
+    if plantillas is not None and equipo_id is not None:
+        banca_rival = set(plantillas.loc[(plantillas.slot == "BANCA")
+                                         & (plantillas.equipo_id != equipo_id), "jugador_id"])
+        elegible |= d.jugador_id.isin(banca_rival)
+    d = d[elegible & (d.dueno_cambio <= max_cambio_dueno)]
     d = d.assign(delta=d.snaps_ahora - d.snaps_antes).sort_values("delta", ascending=False)
     return d[COLUMNAS_ROL].reset_index(drop=True)

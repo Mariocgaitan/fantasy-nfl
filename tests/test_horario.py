@@ -75,3 +75,18 @@ def test_slot_actual_da_el_inicio_del_reporte():
     tipo, inicio = slot_actual(utc("2026-09-29T14:48"))
     assert tipo == "martes"
     assert inicio == datetime(2026, 9, 29, 9, 0, tzinfo=UTC)  # martes 19:00 AEST
+
+
+def test_proximo_waiver_salta_el_martes():
+    import pandas as pd
+
+    from fantasy.horario import proximo_waiver
+    # Viernes 2026-10-02 09:23 Sídney → viernes 17:00 Sídney.
+    assert proximo_waiver(pd.Timestamp("2026-10-01 23:23", tz="UTC")) == \
+        pd.Timestamp("2026-10-02 07:00", tz="UTC")
+    # Martes 2026-10-06 18:00 Sídney (ya con horario de verano, UTC+11) → miércoles 17:00.
+    assert proximo_waiver(pd.Timestamp("2026-10-06 07:00", tz="UTC")) == \
+        pd.Timestamp("2026-10-07 06:00", tz="UTC")
+    # Lunes 2026-10-05 17:30 Sídney → no hay martes → miércoles 17:00.
+    assert proximo_waiver(pd.Timestamp("2026-10-05 06:30", tz="UTC")) == \
+        pd.Timestamp("2026-10-07 06:00", tz="UTC")

@@ -41,8 +41,7 @@ def test_columna_y_bandera(tmp_path):
     r = armar(cargar(SEM4), MARTES, "viernes", 5, ruta_modelo=tmp_path / "m.json")
     assert all(abs(f["modelo"] - f["proy"] - 5.0) < 0.11 for f in r.alineacion)
     assert all(f["discrepa"] for f in r.alineacion)  # +5 > 3
-    html = generar_html(r)
-    assert "Modelo" in html and "⚑" in html
+    assert "Modelo" not in generar_html(r)  # segunda opinión: ya no se muestra
 
 
 def test_modelo_danado_no_tumba_el_reporte(tmp_path):
@@ -69,7 +68,4 @@ def test_tabla_alineada_si_un_titular_no_tiene_modelo(tmp_path):
     _modelo_copia_espn(tmp_path / "m.json")
     r = armar(cargar(SEM4), MARTES, "viernes", 5, ruta_modelo=tmp_path / "m.json")
     r.alineacion[0]["modelo"] = None
-    html = generar_html(r)
-    import re
-    filas = re.findall(r"<tr><td>(?:QB|RB|WR|TE|FLEX)</td>.*?</tr>", html, flags=re.DOTALL)
-    assert len({f.count("<td") for f in filas}) == 1
+    assert "Modelo" not in generar_html(r)  # la columna ya no existe

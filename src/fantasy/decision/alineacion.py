@@ -25,6 +25,7 @@ class Reemplazo:
     slot: str
     titular: int
     suplente: int | None
+    motivo: str | None = None  # sin suplente: "sin_posicion" | "horario" | "ocupado"
 
 
 def _armar(elegidos: list[tuple[str, int]], t: pd.DataFrame) -> Alineacion:
@@ -96,12 +97,18 @@ def reemplazos(al: Alineacion, t: pd.DataFrame) -> list[Reemplazo]:
     elegidos: dict[int, Reemplazo] = {}
     for i, slot, j in movibles:
         f = idx.loc[j]
-        cand = banca[banca.pos.isin(_posiciones(slot)) & ~banca.jugador_id.isin(usados)]
+        de_su_pos = banca[banca.pos.isin(_posiciones(slot))]
+        cand = de_su_pos[~de_su_pos.jugador_id.isin(usados)]
         if pd.notna(f.inicio_utc):
             cand = cand[cand.inicio_utc >= f.inicio_utc]
         mejor = cand.sort_values("esperado", ascending=False, kind="stable").head(1)
         suplente = int(mejor.jugador_id.iloc[0]) if len(mejor) else None
-        if suplente is not None:
+        motivo = None
+        if suplente is None:
+            a_tiempo = de_su_pos if pd.isna(f.inicio_utc) else                 de_su_pos[de_su_pos.inicio_utc >= f.inicio_utc]
+            motivo = ("sin_posicion" if de_su_pos.empty
+                      else "horario" if a_tiempo.empty else "ocupado")
+        else:
             usados.add(suplente)
-        elegidos[i] = Reemplazo(slot, int(j), suplente)
+        elegidos[i] = Reemplazo(slot, int(j), suplente, motivo)
     return [elegidos[i] for i in sorted(elegidos)]

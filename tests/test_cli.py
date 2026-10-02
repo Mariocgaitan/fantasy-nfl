@@ -19,7 +19,7 @@ def test_corrida_completa_sin_red(fixture_dir, tmp_path):
                   enviar_fn=lambda *a, **k: enviados.append(a))
     assert codigo == 0
     html = (tmp_path / "reportes" / "2026-sem03-viernes.html").read_text(encoding="utf-8")
-    assert "SIN VALIDAR" in html
+    assert "Decide la proyección de ESPN." in html
     assert (tmp_path / "index.html").read_text(encoding="utf-8") == html
     assert len(enviados) == 1
     assert enviados[0][0] == ("yo@gmail.com", "clave")

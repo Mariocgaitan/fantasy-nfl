@@ -8,7 +8,7 @@ y antes de la spec (`docs/superpowers/specs/2026-09-26-sistema-fantasy-design.md
 
 | Fase | Estado | Qué hace |
 |---|---|---|
-| 0. Reporte provisional | **En producción** | Martes 19:00, viernes 08:00 y domingo 20:00 (Sídney): alineación óptima, reemplazos por inactivo, agencia libre y "ganando rol". Página en GitHub Pages + correo por Gmail. |
+| 0. Reporte provisional | **En producción** | Martes 19:00, viernes 08:00 y domingo 20:00 (Sídney): "Qué hacer" con urgencia (🔴/🟡/⚪), plantilla con lugares libres (respaldo o moneda de cambio), plan si alguien queda fuera, agencia libre e intercambios por semana, ganando rol (libres y banca de rivales). Página en GitHub Pages + aviso por Gmail. |
 | 1. Intercambios + modelo v1 | **En producción** | El reporte del martes propone hasta 5 intercambios (uno por rival). La agencia libre no suelta jugadores con ADP < 60. |
 | 2. Ejecución autorizada | **Sin empezar** | Botones → issue de GitHub → escribir en ESPN; vigilante de inactivos. |
 | 3. Modelo serio + validación | **Hecha; el modelo NO pasó** | Modelo v2 (ridge sobre la corrección a ESPN calibrada, con contexto del partido). La corrida sellada de 2025 se hizo una vez y falló (ver abajo). |
@@ -48,13 +48,15 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
 - `fantasy evaluar` truena con años distintos de 2024; `comparar` calcula un bootstrap que no usa.
 - La población en vivo (plantillas + top 150 libres) es menor que la histórica (top 1500).
 - `validar-en-vivo` no exige que 2025 se haya corrido (ya se corrió, así que no importa).
-- El archivo de jugadores de nflverse está repetido 3 veces (93 KB c/u).
 
 ## Pendientes cerrados sin cambio de código
 
 - "La lesión solo cuenta en la semana objetivo": no hace falta. ESPN ya pone en 0 las
   semanas en que espera la baja (Caleb Williams 0 en semanas 4–5 y ~17 desde la 6; Achane
   0 hasta la 18). Aplicar `p_jugar` a semanas futuras contaría la lesión dos veces.
+- "El archivo de jugadores de nflverse está repetido 3 veces": no vale la pena. Ahorra
+  ~190 KB y obliga a tocar `ingesta/historico.py`, que alimenta al modelo congelado hasta la
+  validación en vivo; la copia del fixture debe quedarse (cada instantánea es autocontenida).
 
 ## La liga (rápido)
 
@@ -64,6 +66,13 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
   Amon-Ra St. Brown, Parker Washington, Watson, Nabers, Golden (WR), McBride, Juwan
   Johnson (TE), Caleb Williams (QB, lesionado). Récord 1-0 (semana 3: 149.0 a 105.5).
 - Intercambio hecho: Hall + Swift + Collins → Amon-Ra (con Chumpi, 2026-09-30).
+
+## Sincronía reporte ↔ sesión
+
+Cuando Mario pregunte qué hacer, la sesión corre este mismo reporte
+(`uv run fantasy reporte --tipo <tipo> --salida <tmp> --sin-correo --forzar`) y parte de su
+"Qué hacer". Si la sesión recomienda algo distinto, dice por qué (error del reporte o algo que
+el reporte no sabe) y lo anota como pendiente.
 
 ## Comandos
 

@@ -165,3 +165,36 @@ def test_no_suelta_intocables():
     r = al.recomendar(jug, tablas, set(range(1, 9)), 4, intocables={8})
     assert 8 not in set(r.soltar)
     assert (r.ganancia > 0).all()
+
+
+def test_ganando_rol_incluye_la_banca_de_los_rivales():
+    uso = pd.DataFrame({
+        "jugador_id": [20, 20, 20, 21, 21, 21, 22, 22, 22, 23, 23, 23],
+        "semana": [1, 2, 3] * 4,
+        "snaps_pct": [0.10, 0.50, 0.60] * 4,
+        "targets": [0, 4, 5] * 4, "acarreos": [0] * 12,
+    })
+    jug = _jug([
+        {"jugador_id": 20, "nombre": "BancaRival", "pos": "RB", "equipo_fantasy_id": 3,
+         "disponibilidad": "EQUIPO"},
+        {"jugador_id": 21, "nombre": "TitularRival", "pos": "RB", "equipo_fantasy_id": 3,
+         "disponibilidad": "EQUIPO"},
+        {"jugador_id": 22, "nombre": "Mio", "pos": "RB", "equipo_fantasy_id": 5,
+         "disponibilidad": "EQUIPO"},
+        {"jugador_id": 23, "nombre": "Libre", "pos": "RB"},
+    ])
+    plantillas = pd.DataFrame({"equipo_id": [3, 3, 5], "jugador_id": [20, 21, 22],
+                               "slot": ["BANCA", "RB", "BANCA"], "bloqueado": [False] * 3})
+    r = al.ganando_rol(uso, jug, plantillas=plantillas, equipo_id=5)
+    assert set(r.nombre) == {"BancaRival", "Libre"}
+    assert dict(zip(r.nombre, r.equipo_fantasy_id)) == {"BancaRival": 3, "Libre": 0}
+    # Sin plantillas se comporta como antes: solo libres.
+    assert set(al.ganando_rol(uso, jug).nombre) == {"Libre"}
+
+
+def test_ganando_rol_no_sugiere_lesionados():
+    uso = pd.DataFrame({"jugador_id": [30, 30, 30], "semana": [1, 2, 3],
+                        "snaps_pct": [0.10, 0.50, 0.60], "targets": [0, 4, 5],
+                        "acarreos": [0, 0, 0]})
+    jug = _jug([{"jugador_id": 30, "nombre": "EnIR", "pos": "RB", "lesion": "INJURY_RESERVE"}])
+    assert al.ganando_rol(uso, jug).empty

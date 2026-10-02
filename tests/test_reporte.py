@@ -27,16 +27,16 @@ def test_armar_martes_es_de_la_semana_siguiente(fixture_dir):
 
 def test_html_marca_sin_validar(fixture_dir):
     html = generar_html(armar(cargar(fixture_dir), AHORA, "viernes", 5))
-    assert "SIN VALIDAR" in html
+    assert "Decide la proyección de ESPN." in html
     assert "Tyler Shough" in html
-    assert "sin respaldo útil" in html
+    assert "nadie:" in html
     assert '<meta name="viewport"' in html
 
 
 def test_resumen_y_envio_por_gmail(fixture_dir):
     r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
     texto = correo.resumen(r)
-    assert texto.startswith("Semana 3 · reporte del viernes · SIN VALIDAR")
+    assert texto.startswith("Reporte del viernes (semana 3)")
     vistos = {}
 
     class SMTPFalso:
@@ -97,18 +97,12 @@ def test_temporada_terminada_no_arma_reporte(fixture_dir):
         armar(crudos, pd.Timestamp("2027-01-12 09:00", tz="UTC"), "martes", 5)
 
 
-def test_correo_dice_si_el_sugerido_esta_lesionado(fixture_dir):
-    r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
-    r.agencia[0]["lesion"] = "OUT"
-    assert "(fuera" in correo.resumen(r)
-
-
 def test_estados_en_espanol_y_descanso_visible(fixture_dir):
     r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
     html = generar_html(r)
     assert "QUESTIONABLE" not in html and "ACTIVE" not in html
     assert "en duda" in html  # Coker, suplente de Cook
     # Un titular sin partido esa semana se marca como "descansa".
-    r.alineacion[0]["estado"] = "descansa"
+    r.plantilla[0]["estado"] = "descansa"
     assert "descansa" in generar_html(r)
     assert all("estado" in f for f in armar(cargar(fixture_dir), AHORA, "viernes", 5).alineacion)

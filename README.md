@@ -41,8 +41,7 @@ por debajo de ESPN, y con el error absoluto eso ya basta para mejorar, porque lo
 fantasy tienen cola larga hacia arriba y el MAE premia apuntar a la mediana. Si a ESPN se le
 aplica el mismo ajuste (multiplicarla por 0.923, calculado solo con 2023), su MAE baja a
 6.27: **el modelo empata con una ESPN calibrada, no la supera**, y además no gana en QB ni
-en TE. Por eso en el reporte la columna "Modelo" casi siempre queda cerca de ESPN y la ⚑
-casi nunca aparece. Para la validación oficial (fase 3) la referencia justa es ESPN
+en TE. Por eso el reporte ya no muestra la columna "Modelo": casi siempre quedaba cerca de ESPN. Para la validación oficial (fase 3) la referencia justa es ESPN
 calibrada, no ESPN tal cual. **2025 sigue sellado** para esa validación.
 
 ## Comandos

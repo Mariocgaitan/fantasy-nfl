@@ -24,7 +24,7 @@ def test_sin_validar_sigue_decidiendo_espn(tmp_path):
     r = armar(cargar(SEM4), MARTES, "viernes", 5, ruta_validacion=tmp_path)
     assert r.validado is None
     assert all(f["proy"] == f["espn"] for f in r.alineacion)
-    assert "SIN VALIDAR" in generar_html(r)
+    assert "Decide la proyección de ESPN." in generar_html(r)
 
 
 def test_cuando_manda_decide_el_modelo(tmp_path, monkeypatch):
@@ -45,4 +45,4 @@ def test_cuando_manda_decide_el_modelo(tmp_path, monkeypatch):
     assert r.validado == "2025 sellada"
     assert any(f["proy"] != f["espn"] for f in r.alineacion)
     html = generar_html(r)
-    assert "VALIDADO" in html and "SIN VALIDAR" not in html
+    assert "Decide el modelo validado" in html
