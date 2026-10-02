@@ -36,7 +36,8 @@ def construir(*, cambios, limite_cambios, alineacion, reemplazos, pedidos, lugar
                               "~90 minutos antes del partido", f["inicio_utc"], "inactivo"))
     for p in pedidos:
         soltar = f", suelta a {p['soltar']}" if p.get("soltar") else ""
-        acc.append(Accion("urgente", f"Pide a {p['nombre']} ({p['pos']}){soltar} "
+        acc.append(Accion("urgente", f"Pide a {p['nombre']} ({p['pos']}){soltar} y mételo de "
+                                     f"titular por {p['titular']} "
                                      f"({COMO_ENTRA[p['disponibilidad']]})",
                           f"{p['titular']} no juega y no tienes quien lo reemplace",
                           p["limite"], "pedir"))

@@ -144,16 +144,6 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     equipos = {t["id"]: t["name"].strip() for t in liga["teams"]}
     por_id = jugadores.set_index("jugador_id")
     nombres = por_id.nombre
-    sugeridas = agencia_libre.recomendar(jugadores, tablas, mis_ids, semana,
-                                         intocables=intocables)
-    agencia = [{
-        "pedir": nombres[x.pedir], "pos": x.pos, "soltar": nombres[x.soltar],
-        "lesion": por_id.loc[x.pedir, "lesion"],
-        "estado": estado(por_id.loc[x.pedir, "lesion"]),
-        "ganancia": round(float(x.ganancia), 1),
-        "semanal": round(float(x.ganancia) / semanas, 1),
-    } for x in sugeridas.itertuples()]
-
     # Plantilla completa, tope y lugares libres (el IR no ocupa lugar).
     tope = espn.tope_plantilla(liga)
     en_ir = set(mia.loc[mia.slot == "IR", "jugador_id"])
@@ -178,32 +168,41 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     fuera = [(s, j) for s, j in al.slots
              if idx.loc[j, "lesion"] in ("OUT", "INJURY_RESERVE", "SUSPENSION")
              and not idx.loc[j, "bloqueado"]]
-    pedidos = []
-    for s, j in fuera:
-        elegidos = lugar_libre.elegir(jugadores, tablas, plantillas, equipo_id, semana,
-                                      [(s, j)], 1, solo_respaldo=True, waiver=waiver)
-        if not elegidos:
-            continue
-        e = elegidos[0]
-        disp = por_id.loc[e.jugador_id, "disponibilidad"]
-        soltar = None
-        if lugares_libres == 0:
-            banca = [b for b in mis_ids - titulares
-                     if b not in intocables and not idx.loc[b, "bloqueado"]]
-            soltar = nombres[min(banca, key=lambda b: resto.get(b, 0.0))] if banca else None
-        pedidos.append({"titular": idx.loc[j, "nombre"], "nombre": nombres[e.jugador_id],
-                        "pos": por_id.loc[e.jugador_id, "pos"], "disponibilidad": disp,
-                        "limite": waiver if disp == "WAIVERS" else idx.loc[j, "inicio_utc"],
-                        "soltar": soltar})
+    bloqueados = set(idx.index[idx.bloqueado.astype(bool)])
+    candidatos_soltar = lugar_libre.soltables(mis_ids, titulares=titulares, en_ir=en_ir,
+                                              intocables=intocables, bloqueados=bloqueados,
+                                              resto=resto)
     sin_respaldo = [(r.slot, r.titular) for r in lista_remp if r.suplente is None]
+    elegidos_pedidos, elegidos_lugares = lugar_libre.planear(
+        jugadores, tablas, plantillas, equipo_id, semana, fuera=fuera,
+        sin_respaldo=sin_respaldo, lugares_libres=lugares_libres,
+        soltables=candidatos_soltar, ahora=ahora, waiver=waiver)
+    pedidos = [{
+        "titular": idx.loc[p.titular, "nombre"], "nombre": nombres[p.jugador_id],
+        "pos": por_id.loc[p.jugador_id, "pos"],
+        "disponibilidad": por_id.loc[p.jugador_id, "disponibilidad"], "limite": p.limite,
+        "soltar": nombres[p.soltar] if p.soltar is not None else None,
+    } for p in elegidos_pedidos]
     lugares = [{
         "nombre": nombres[e.jugador_id], "pos": por_id.loc[e.jugador_id, "pos"],
         "disponibilidad": por_id.loc[e.jugador_id, "disponibilidad"], "motivo": e.motivo,
         "cubre": idx.loc[e.cubre, "nombre"] if e.cubre else None,
         "rival": equipos.get(e.rival), "valor_rival": round(e.valor_rival, 1),
         "limite": waiver if por_id.loc[e.jugador_id, "disponibilidad"] == "WAIVERS" else None,
-    } for e in lugar_libre.elegir(jugadores, tablas, plantillas, equipo_id, semana,
-                                  sin_respaldo, lugares_libres - len(pedidos))]
+    } for e in elegidos_lugares]
+    tomados = {p.jugador_id for p in elegidos_pedidos} | {e.jugador_id for e in elegidos_lugares}
+
+    # Agencia libre: soltar a uno del IR no libera lugar; no repite a los ya pedidos arriba.
+    sugeridas = agencia_libre.recomendar(jugadores, tablas, mis_ids, semana,
+                                         intocables=intocables | en_ir)
+    sugeridas = sugeridas[~sugeridas.pedir.isin(tomados)]
+    agencia = [{
+        "pedir": nombres[x.pedir], "pos": x.pos, "soltar": nombres[x.soltar],
+        "lesion": por_id.loc[x.pedir, "lesion"],
+        "estado": estado(por_id.loc[x.pedir, "lesion"]),
+        "ganancia": round(float(x.ganancia), 1),
+        "semanal": round(float(x.ganancia) / semanas, 1),
+    } for x in sugeridas.itertuples()]
 
     rol: list[dict] = []
     if all(k in crudos for k in ("semanal", "snaps", "jugadores")):
@@ -225,7 +224,7 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
             # Agencia libre manda: sus libres no se reusan de relleno en los intercambios.
             encontradas = intercambios_mod.buscar(plantillas, jugadores, tablas, equipo_id,
                                                   adp, rival,
-                                                  excluir=set(sugeridas.pedir.astype(int)))
+                                                  excluir=set(sugeridas.pedir.astype(int)) | tomados)
         except Exception as e:  # noqa: BLE001 — un fallo aquí no tumba el resto del reporte
             encontradas = []
             avisos.append(f"No se pudieron calcular los intercambios: {type(e).__name__}: {e}")

@@ -117,3 +117,10 @@ def test_correo_nada_que_hacer():
     r = _r()
     r.acciones = [Accion("radar", "R", "p", None, "rol")]
     assert correo.resumen(r) == "Reporte del viernes (semana 4): nada que hacer."
+
+
+def test_agencia_no_repite_al_del_lugar_libre():
+    r = _r()
+    pedidos = {a.texto.split("Pide a ")[1].split(" (")[0] for a in r.acciones
+               if a.tipo in ("lugar", "pedir")}
+    assert pedidos and not pedidos & {a["pedir"] for a in r.agencia}

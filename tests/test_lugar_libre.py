@@ -94,3 +94,61 @@ def test_titular_que_descansa_no_pide_respaldo():
     for t in tablas.values():
         t.loc[t.jugador_id == 2, "inicio_utc"] = pd.NaT
     assert ll.elegir(jug, tablas, pl, 5, 4, [("RB", 2)], 1, solo_respaldo=True) == []
+
+
+AHORA = TEMPRANO - pd.Timedelta(days=2)
+
+
+def test_planear_plantilla_llena_suelta_al_primero_soltable():
+    jug, tablas, pl = _caso([(21, "RB", 9, TARDE, "LIBRE")])
+    pedidos, lugares = ll.planear(jug, tablas, pl, 5, 4, fuera=[("RB", 2)], sin_respaldo=[],
+                                  lugares_libres=0, soltables=[6], ahora=AHORA, waiver=None)
+    assert [(p.jugador_id, p.titular, p.soltar) for p in pedidos] == [(21, 2, 6)]
+    assert lugares == []
+
+
+def test_planear_dos_titulares_fuera_no_repite_y_cuenta_lugares():
+    jug, tablas, pl = _caso([(21, "RB", 9, TARDE, "LIBRE"), (22, "RB", 8, TARDE, "LIBRE")])
+    pedidos, _ = ll.planear(jug, tablas, pl, 5, 4, fuera=[("RB", 2), ("RB", 3)],
+                            sin_respaldo=[], lugares_libres=1, soltables=[6],
+                            ahora=AHORA, waiver=None)
+    assert len({p.jugador_id for p in pedidos}) == 2
+    assert [p.soltar for p in pedidos] == [None, 6]
+
+
+def test_planear_lleno_sin_soltables_no_pide():
+    jug, tablas, pl = _caso([(21, "RB", 9, TARDE, "LIBRE")])
+    pedidos, _ = ll.planear(jug, tablas, pl, 5, 4, fuera=[("RB", 2)], sin_respaldo=[],
+                            lugares_libres=0, soltables=[], ahora=AHORA, waiver=None)
+    assert pedidos == []
+
+
+def test_planear_titular_fuera_acepta_libre_que_juega_antes_que_el():
+    # Si ya se sabe que no juega, cualquiera que aún no haya jugado es mejor que 0.
+    jug, tablas, pl = _caso([(21, "RB", 9, TEMPRANO, "LIBRE")])
+    pedidos, _ = ll.planear(jug, tablas, pl, 5, 4, fuera=[("RB", 2)], sin_respaldo=[],
+                            lugares_libres=1, soltables=[], ahora=AHORA, waiver=None)
+    assert [(p.jugador_id, p.limite) for p in pedidos] == [(21, TEMPRANO)]
+
+
+def test_planear_lugares_no_repiten_al_pedido_ni_cubren_al_que_no_juega():
+    jug, tablas, pl = _caso([(21, "RB", 9, TARDE, "LIBRE"), (22, "RB", 8, TARDE, "LIBRE")])
+    pedidos, lugares = ll.planear(jug, tablas, pl, 5, 4, fuera=[("RB", 2)],
+                                  sin_respaldo=[("RB", 2)], lugares_libres=2, soltables=[],
+                                  ahora=AHORA, waiver=None)
+    assert {p.jugador_id for p in pedidos}.isdisjoint({e.jugador_id for e in lugares})
+    assert all(e.cubre != 2 for e in lugares)
+
+
+def test_lugar_respaldo_en_waivers_debe_llegar_antes_del_partido():
+    jug, tablas, pl = _caso([(21, "RB", 12, TARDE, "WAIVERS"), (22, "RB", 7, TARDE, "LIBRE")])
+    _, lugares = ll.planear(jug, tablas, pl, 5, 4, fuera=[], sin_respaldo=[("RB", 2)],
+                            lugares_libres=1, soltables=[], ahora=AHORA,
+                            waiver=TARDE + pd.Timedelta(hours=1))
+    assert lugares[0].jugador_id == 22 and lugares[0].motivo == "respaldo"
+
+
+def test_soltables_excluye_ir_intocables_bloqueados_y_titulares():
+    resto = {10: 5.0, 11: 1.0, 12: 0.0, 13: 2.0, 14: 3.0}
+    assert ll.soltables({1, 10, 11, 12, 13, 14}, titulares={1}, en_ir={12}, intocables={13},
+                        bloqueados={14}, resto=resto) == [11, 10]

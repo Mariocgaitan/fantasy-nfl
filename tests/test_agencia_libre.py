@@ -190,3 +190,11 @@ def test_ganando_rol_incluye_la_banca_de_los_rivales():
     assert dict(zip(r.nombre, r.equipo_fantasy_id)) == {"BancaRival": 3, "Libre": 0}
     # Sin plantillas se comporta como antes: solo libres.
     assert set(al.ganando_rol(uso, jug).nombre) == {"Libre"}
+
+
+def test_ganando_rol_no_sugiere_lesionados():
+    uso = pd.DataFrame({"jugador_id": [30, 30, 30], "semana": [1, 2, 3],
+                        "snaps_pct": [0.10, 0.50, 0.60], "targets": [0, 4, 5],
+                        "acarreos": [0, 0, 0]})
+    jug = _jug([{"jugador_id": 30, "nombre": "EnIR", "pos": "RB", "lesion": "INJURY_RESERVE"}])
+    assert al.ganando_rol(uso, jug).empty

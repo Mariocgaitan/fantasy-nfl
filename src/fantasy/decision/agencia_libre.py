@@ -9,6 +9,7 @@ from fantasy.proyeccion.espn import tabla_semana
 SEGURO = 0.15          # fracción de sus puntos que vale un respaldo (sin validar)
 SEMANAS_SEGURO = 3
 SEGURO_POS = ("QB", "TE")  # RB y WR ya se cubren entre sí por el FLEX
+FUERA = ("OUT", "INJURY_RESERVE", "SUSPENSION")  # no se sugieren en "ganando rol"
 ADP_INTOCABLE = 60.0  # nombre alto: sirve para intercambios
 COLUMNAS_ROL = ["jugador_id", "nombre", "pos", "disponibilidad", "equipo_fantasy_id",
                 "snaps_antes", "snaps_ahora", "oport_antes", "oport_ahora", "dueno_pct",
@@ -154,7 +155,7 @@ def ganando_rol(uso, jugadores, *, plantillas=None, equipo_id=None, umbral_snaps
     sube = ((d.snaps_ahora - d.snaps_antes >= umbral_snaps)
             | (d.oport_ahora - d.oport_antes >= umbral_oport))
     d = d[sube].merge(jugadores, on="jugador_id")
-    elegible = d.disponibilidad != "EQUIPO"
+    elegible = (d.disponibilidad != "EQUIPO") & ~d.lesion.isin(FUERA)
     if plantillas is not None and equipo_id is not None:
         banca_rival = set(plantillas.loc[(plantillas.slot == "BANCA")
                                          & (plantillas.equipo_id != equipo_id), "jugador_id"])

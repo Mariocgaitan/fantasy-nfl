@@ -85,3 +85,10 @@ def test_orden_urgentes_por_hora():
     acc = _vacio(cambios=["Entra X"], limite_cambios=T1, alineacion=al, reemplazos=rem)
     assert [a.limite for a in acc] == [T1, T2]
     assert ac.contar(acc) == {"urgente": 2, "recomendado": 0, "radar": 0}
+
+
+def test_pedido_urgente_dice_que_lo_metas_de_titular():
+    ped = [{"titular": "A", "nombre": "N", "pos": "RB", "disponibilidad": "LIBRE",
+            "limite": T1, "soltar": None}]
+    [a] = _vacio(pedidos=ped)
+    assert "mételo de titular por A" in a.texto
