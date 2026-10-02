@@ -27,9 +27,9 @@ def test_armar_martes_es_de_la_semana_siguiente(fixture_dir):
 
 def test_html_marca_sin_validar(fixture_dir):
     html = generar_html(armar(cargar(fixture_dir), AHORA, "viernes", 5))
-    assert "SIN VALIDAR" in html
+    assert "Decide la proyección de ESPN." in html
     assert "Tyler Shough" in html
-    assert "sin respaldo útil" in html
+    assert "nadie:" in html
     assert '<meta name="viewport"' in html
 
 
@@ -109,6 +109,6 @@ def test_estados_en_espanol_y_descanso_visible(fixture_dir):
     assert "QUESTIONABLE" not in html and "ACTIVE" not in html
     assert "en duda" in html  # Coker, suplente de Cook
     # Un titular sin partido esa semana se marca como "descansa".
-    r.alineacion[0]["estado"] = "descansa"
+    r.plantilla[0]["estado"] = "descansa"
     assert "descansa" in generar_html(r)
     assert all("estado" in f for f in armar(cargar(fixture_dir), AHORA, "viernes", 5).alineacion)

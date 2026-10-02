@@ -163,7 +163,9 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     def fila(lugar, j):
         return {"lugar": lugar, "nombre": idx.loc[j, "nombre"], "pos": idx.loc[j, "pos"],
                 "proy": round(float(idx.loc[j, "proy"]), 1),
-                "estado": estado(idx.loc[j, "lesion"]), "hora": hora(j)}
+                "estado": ("descansa" if pd.isna(idx.loc[j, "inicio_utc"])
+                           else estado(idx.loc[j, "lesion"])),
+                "hora": hora(j)}
 
     plantilla_vista = [fila(s, j) for s, j in al.slots]
     plantilla_vista += [fila("IR" if j in en_ir else "Banca", j)

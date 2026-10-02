@@ -4,10 +4,11 @@ from dataclasses import asdict
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from fantasy.reporte.armado import DIAS, Reporte
+from fantasy.reporte.armado import DIAS, Reporte, hora_sidney
 
 _ENTORNO = Environment(loader=PackageLoader("fantasy.reporte", "plantillas"),
                        autoescape=select_autoescape(["html", "j2"]))
+_ENTORNO.filters["hora"] = hora_sidney
 
 
 def generar_html(r: Reporte) -> str:

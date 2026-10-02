@@ -4,6 +4,7 @@ import pandas as pd
 
 from fantasy.almacen.instantaneas import cargar
 from fantasy.reporte.armado import armar, hora_sidney
+from fantasy.reporte.html import generar_html
 
 VIE = pathlib.Path(__file__).parent / "fixtures" / "sem04_2026-10-02"
 AHORA = pd.Timestamp("2026-10-01 23:23", tz="UTC")
@@ -66,3 +67,33 @@ def test_hora_sidney():
     assert hora_sidney(pd.Timestamp("2026-10-02 07:00", tz="UTC")) == "vie 17:00"
     assert hora_sidney(None) == "descansa"
     assert hora_sidney(pd.NaT) == "descansa"
+
+
+def test_pagina_empieza_con_que_hacer():
+    html = generar_html(_r())
+    assert html.index("Qué hacer") < html.index("Tu plantilla")
+    assert "Recomendado" in html and "sin soltar a nadie" in html
+    assert "Lugares libres: 1 de 14" in html
+
+
+def test_pagina_sin_modelo_ni_sello():
+    html = generar_html(_r())
+    assert "Modelo" not in html and "SIN VALIDAR" not in html
+    assert "Decide la proyección de ESPN." in html
+
+
+def test_pagina_explica_sin_respaldo_y_columnas_de_rol():
+    html = generar_html(_r())
+    assert "no tienes RB en la banca" in html
+    assert "% de las jugadas de ataque" in html and "pases + carreras" in html
+
+
+def test_pagina_ganancia_por_semana():
+    html = generar_html(_r())
+    assert "por semana" in html
+
+
+def test_nada_que_hacer_hoy():
+    r = _r()
+    r.acciones = []
+    assert "Nada que hacer hoy." in generar_html(r)
