@@ -20,7 +20,7 @@ def test_martes_trae_intercambios():
     html = generar_html(r)
     assert "Intercambios" in html and "propón una a la vez" in html
     assert x["recibes"][0] in html
-    assert "Intercambio:" in correo.resumen(r)
+    assert "Reporte del martes (semana 4)" in correo.resumen(r)
 
 
 def test_viernes_no_trae_intercambios():
@@ -32,15 +32,6 @@ def test_viernes_no_trae_intercambios():
 def test_agencia_no_suelta_a_nabers():
     r = armar(cargar(SEM4), MARTES, "martes", 5)
     assert "Malik Nabers" not in {a["soltar"] for a in r.agencia}
-
-
-def test_correo_avisa_lesiones_y_relleno():
-    r = armar(cargar(SEM4), MARTES, "viernes", 5)
-    r.intercambios = [{"rival": "X", "das": ["A"], "recibes": ["B"], "relleno": ["C"],
-                       "sueltas": ["D"], "ganancia": 10.0, "riesgo": "bajo",
-                       "lesiones": ["B (fuera)"]}]
-    texto = correo.resumen(r)
-    assert "B (fuera)" in texto and "pides C" in texto and "sueltas D" in texto
 
 
 def test_si_falla_la_busqueda_el_reporte_sale_igual(monkeypatch):

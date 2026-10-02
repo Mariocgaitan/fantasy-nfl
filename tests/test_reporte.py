@@ -36,7 +36,7 @@ def test_html_marca_sin_validar(fixture_dir):
 def test_resumen_y_envio_por_gmail(fixture_dir):
     r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
     texto = correo.resumen(r)
-    assert texto.startswith("Semana 3 · reporte del viernes · SIN VALIDAR")
+    assert texto.startswith("Reporte del viernes (semana 3)")
     vistos = {}
 
     class SMTPFalso:
@@ -95,12 +95,6 @@ def test_temporada_terminada_no_arma_reporte(fixture_dir):
         crudos = cargar(fixture_dir)
         crudos["liga"] = dict(crudos["liga"], scoringPeriodId=17)
         armar(crudos, pd.Timestamp("2027-01-12 09:00", tz="UTC"), "martes", 5)
-
-
-def test_correo_dice_si_el_sugerido_esta_lesionado(fixture_dir):
-    r = armar(cargar(fixture_dir), AHORA, "viernes", 5)
-    r.agencia[0]["lesion"] = "OUT"
-    assert "(fuera" in correo.resumen(r)
 
 
 def test_estados_en_espanol_y_descanso_visible(fixture_dir):

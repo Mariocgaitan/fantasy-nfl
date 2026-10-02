@@ -3,6 +3,8 @@ import pathlib
 import pandas as pd
 
 from fantasy.almacen.instantaneas import cargar
+from fantasy.decision.acciones import Accion
+from fantasy.reporte import correo
 from fantasy.reporte.armado import armar, hora_sidney
 from fantasy.reporte.html import generar_html
 
@@ -97,3 +99,21 @@ def test_nada_que_hacer_hoy():
     r = _r()
     r.acciones = []
     assert "Nada que hacer hoy." in generar_html(r)
+
+
+def test_correo_cuenta_y_lista_urgentes():
+    r = _r()
+    r.acciones = [Accion("urgente", "Cambia tu alineación: Entra X", "p",
+                         pd.Timestamp("2026-10-04 17:00", tz="UTC"), "alineacion"),
+                  Accion("recomendado", "Pide a D", "p", None, "lugar"),
+                  Accion("radar", "R", "p", None, "rol")]
+    texto = correo.resumen(r)
+    assert texto.splitlines()[0] == "Reporte del viernes (semana 4): 1 urgente, 1 recomendada."
+    assert "🔴 Cambia tu alineación: Entra X — antes del lun 04:00" in texto
+    assert "Pide a D" not in texto
+
+
+def test_correo_nada_que_hacer():
+    r = _r()
+    r.acciones = [Accion("radar", "R", "p", None, "rol")]
+    assert correo.resumen(r) == "Reporte del viernes (semana 4): nada que hacer."

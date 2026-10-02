@@ -3,34 +3,26 @@
 import smtplib
 from email.message import EmailMessage
 
-from fantasy.reporte.armado import DIAS, Reporte, estado
+from fantasy.decision.acciones import contar
+from fantasy.reporte.armado import DIAS, Reporte, hora_sidney
 
 SERVIDOR = ("smtp.gmail.com", 465)
 
-
 def resumen(r: Reporte) -> str:
-    sello = "VALIDADO (decide el modelo)" if r.validado else "SIN VALIDAR (decide ESPN)"
-    lineas = [f"Semana {r.semana} · reporte {DIAS[r.tipo]} · {sello}"]
-    lineas.append("Alineación: " + (" · ".join(r.cambios) if r.cambios else "sin cambios"))
-    if r.agencia:
-        a = r.agencia[0]
-        nota = f" ({estado(a['lesion'])})" if a.get("lesion", "ACTIVE") != "ACTIVE" else ""
-        lineas.append(f"Agencia libre: pedir {a['pedir']}{nota}, soltar {a['soltar']} "
-                      f"(+{a['ganancia']})")
-    if r.intercambios:
-        x = r.intercambios[0]
-        recibes = ", ".join(x["lesiones"] or x["recibes"]) if x.get("lesiones") else ", ".join(
-            x["recibes"])
-        extra = ""
-        if x.get("relleno"):
-            extra += f"; luego pides {', '.join(x['relleno'])}"
-        if x.get("sueltas"):
-            extra += f"; sueltas {', '.join(x['sueltas'])}"
-        lineas.append(f"Intercambio: das {', '.join(x['das'])} a {x['rival']} por {recibes}"
-                      f"{extra} (+{x['ganancia']}, veto {x['riesgo']})")
-    sin = [x["titular"] for x in r.reemplazos if x["suplente"] is None]
-    if sin:
-        lineas.append("Sin respaldo útil: " + ", ".join(sin))
+    n = contar(r.acciones)
+    cabeza = f"Reporte {DIAS[r.tipo]} (semana {r.semana})"
+    if not n["urgente"] and not n["recomendado"]:
+        return f"{cabeza}: nada que hacer."
+    partes = []
+    if n["urgente"]:
+        partes.append(f"{n['urgente']} urgente{'s' if n['urgente'] > 1 else ''}")
+    if n["recomendado"]:
+        partes.append(f"{n['recomendado']} recomendada{'s' if n['recomendado'] > 1 else ''}")
+    lineas = [f"{cabeza}: {', '.join(partes)}."]
+    for a in r.acciones:
+        if a.urgencia == "urgente":
+            limite = f" — antes del {hora_sidney(a.limite)}" if a.limite is not None else ""
+            lineas.append(f"🔴 {a.texto}{limite}")
     return "\n".join(lineas)
 
 
