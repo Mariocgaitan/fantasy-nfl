@@ -8,6 +8,7 @@ from fantasy.reporte.armado import DIAS, Reporte, hora_sidney
 
 SERVIDOR = ("smtp.gmail.com", 465)
 
+
 def resumen(r: Reporte) -> str:
     n = contar(r.acciones)
     cabeza = f"Reporte {DIAS[r.tipo]} (semana {r.semana})"

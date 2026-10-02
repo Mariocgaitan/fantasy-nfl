@@ -8,7 +8,7 @@ y antes de la spec (`docs/superpowers/specs/2026-09-26-sistema-fantasy-design.md
 
 | Fase | Estado | Qué hace |
 |---|---|---|
-| 0. Reporte provisional | **En producción** | Martes 19:00, viernes 08:00 y domingo 20:00 (Sídney): alineación óptima, reemplazos por inactivo, agencia libre y "ganando rol". Página en GitHub Pages + correo por Gmail. |
+| 0. Reporte provisional | **En producción** | Martes 19:00, viernes 08:00 y domingo 20:00 (Sídney): "Qué hacer" con urgencia (🔴/🟡/⚪), plantilla con lugares libres (respaldo o moneda de cambio), plan si alguien queda fuera, agencia libre e intercambios por semana, ganando rol (libres y banca de rivales). Página en GitHub Pages + aviso por Gmail. |
 | 1. Intercambios + modelo v1 | **En producción** | El reporte del martes propone hasta 5 intercambios (uno por rival). La agencia libre no suelta jugadores con ADP < 60. |
 | 2. Ejecución autorizada | **Sin empezar** | Botones → issue de GitHub → escribir en ESPN; vigilante de inactivos. |
 | 3. Modelo serio + validación | **Hecha; el modelo NO pasó** | Modelo v2 (ridge sobre la corrección a ESPN calibrada, con contexto del partido). La corrida sellada de 2025 se hizo una vez y falló (ver abajo). |
@@ -66,6 +66,13 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
   Amon-Ra St. Brown, Parker Washington, Watson, Nabers, Golden (WR), McBride, Juwan
   Johnson (TE), Caleb Williams (QB, lesionado). Récord 1-0 (semana 3: 149.0 a 105.5).
 - Intercambio hecho: Hall + Swift + Collins → Amon-Ra (con Chumpi, 2026-09-30).
+
+## Sincronía reporte ↔ sesión
+
+Cuando Mario pregunte qué hacer, la sesión corre este mismo reporte
+(`uv run fantasy reporte --tipo <tipo> --salida <tmp> --sin-correo --forzar`) y parte de su
+"Qué hacer". Si la sesión recomienda algo distinto, dice por qué (error del reporte o algo que
+el reporte no sabe) y lo anota como pendiente.
 
 ## Comandos
 
