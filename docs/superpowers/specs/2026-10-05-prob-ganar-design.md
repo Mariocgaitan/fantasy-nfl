@@ -4,11 +4,11 @@ Fecha: 2026-10-05. Rama: `prob-ganar`. Aprobado por Mario en la sesión (diseño
 
 ## Problema
 
-Semana 4: BanKAI perdió 101.7 a 128.1 contra PUTIPUERCAS FC con 34.5 puntos de ventaja
-proyectada. El diagnóstico con toda la liga (semanas 3–4):
+Semana 4: BanKAI perdió 101.7 a 149.5 contra Norway Ass con 22.1 puntos de ventaja
+proyectada (135.5 a 113.4; Norway Ass hizo +36.1 sobre su proyección). El diagnóstico con toda la liga (semanas 3–4):
 
 - ESPN no tiene sesgo (error medio por equipo +0.2) pero sí mucho ruido: desviación de ~9
-  puntos por jugador y **~23 por equipo**. Con ese ruido, +34.5 era ≈ 86% de ganar: fue mala
+  puntos por jugador y **~23 por equipo**. Con ese ruido, +22.1 era ≈ 75% de ganar: fue mala
   suerte, no un error de dirección.
 - Pero el sistema **solo maximiza puntos esperados** (`decision/alineacion.py: optima`). No
   mira al rival ni la varianza. El favorito debería preferir estabilidad; el que va abajo,
@@ -45,13 +45,18 @@ La validación en vivo del modelo v2 exige que **no cambie** `src/fantasy/modelo
 **a) Rol (`varianza/rol.py`).** Por jugador y semana N, solo con partidos de semanas < N de
 la temporada (nflverse `semanal` y `snaps`):
 
-| Característica | Definición |
-|---|---|
-| `adot` | air yards / targets |
-| `target_share` | targets / targets del equipo |
-| `rush_share` | acarreos / acarreos del equipo |
-| `snap_pct` | promedio de % de snaps de ataque |
-| `td_share` | puntos por TD / puntos PPR totales |
+| Característica | Definición | Posiciones |
+|---|---|---|
+| `target_share` | parte de los targets del equipo (nflverse) | RB, WR, TE |
+| `rel_depth` | `air_yards_share / target_share`: profundidad relativa (≈ aDOT frente al promedio del equipo) | WR, TE |
+| `rush_share` | acarreos / acarreos del equipo | QB, RB |
+| `snap_pct` | % de snaps de ataque | todas |
+| `eficiencia` | `(puntos PPR − recepciones) / (targets + acarreos)`: yardas y TD por oportunidad | RB, WR, TE |
+
+*Ajuste al escribir el plan (2026-10-05):* los CSV de nflverse que guarda el sistema (histórico e
+instantáneas) no traen air yards ni TD por separado, y cambiar la ingesta tocaría lo que alimenta
+al modelo congelado. `rel_depth` reemplaza a `adot` y `eficiencia` a `td_share` con las columnas
+que ya hay.
 
 Mezcla con el año anterior: `x = (n·x_temporada + m·x_previo) / (n + m)`, con `n` partidos
 jugados y `m = 3`. Sin año previo (novato), se usa la mediana de la posición como `x_previo`.
@@ -66,8 +71,8 @@ relevantes, semanas 3–17). Gana el `k` de menor CRPS; empate (diferencia < 1%)
 **c) Colecciones de errores (`varianza/errores.py`).** Error = puntos reales − proyección de
 ESPN de esa semana, jugadores relevantes (los de `modelo/evaluar.relevantes`). Se guarda por
 (posición, grupo, tramo de proyección). Tramos: terciles de la proyección por posición en los
-datos de construcción. Una celda con menos de 200 errores se junta con su tramo vecino del
-mismo grupo. Para la temporada en vivo y para 2025 las colecciones se construyen con
+datos de construcción. Si una celda (posición, grupo, tramo) tiene menos de 200 errores se usa
+(posición, grupo) y, si aún no alcanza, (posición). Para la temporada en vivo y para 2025 las colecciones se construyen con
 2023–2024 juntos.
 
 **d) Correlación entre compañeros.** Con 2023–2024, la correlación de rangos (Spearman)
@@ -106,7 +111,7 @@ lugar está vacío, se usa su alineación `optima` por puntos esperados.
 | No existe el archivo | Nada nuevo | Puntos esperados |
 | Pasa 1 y 2 | "Probabilidad de ganar: X%" arriba de "Qué hacer" y, por cada titular cambiado, una línea "Entra A por B: vas arriba/abajo y conviene estabilidad/techo" | **P(ganar)** |
 | Solo 2 | "Probabilidad de ganar: X%" | Puntos esperados |
-| Ninguna | Aviso: "La probabilidad de ganar no pasó la validación." | Puntos esperados |
+| Ninguna, o solo 1 | Aviso: "La probabilidad de ganar no pasó la validación." | Puntos esperados |
 
 En el reporte del **martes** el porcentaje lleva "(preliminar: el rival aún puede cambiar)".
 "Vas arriba/abajo" = P(ganar) de la `optima` ≥ 50% o < 50%; "estabilidad/techo" = el que
@@ -122,8 +127,10 @@ sobre 2024 con colecciones de 2023 (para depurar; 2024 ya es de desarrollo).
 
 **Ligas simuladas (`varianza/ligas.py`).** 200 ligas de 8 equipos, semilla fija. Draft en
 serpiente de 14 rondas; valor = proyección de ESPN de la semana 1 × (1 + ruido N(0, 0.15));
-límites por posición: QB ≤ 3, RB ≤ 6, WR ≤ 6, TE ≤ 3, y cada equipo completa 1 QB, 2 RB,
-2 WR, 1 TE antes de la ronda 10. Plantillas fijas toda la temporada. Calendario: cada semana
+límites por posición: QB ≤ 3, RB ≤ 6, WR ≤ 6, TE ≤ 3; cuando a un equipo le quedan tantas
+rondas como titulares le faltan (1 QB, 2 RB, 2 WR, 1 TE), solo puede elegir esas posiciones.
+Pool: los 200 jugadores con mayor proyección de la semana 1. Un jugador sin proyección en una
+semana (descanso) aporta 0, y uno sin puntos reales también. Plantillas fijas toda la temporada. Calendario: cada semana
 emparejamiento aleatorio por liga. Semanas 3–17.
 
 En cada enfrentamiento, cada equipo alinea por puntos esperados (`optima`) y por P(ganar)
@@ -145,7 +152,12 @@ se niega si: el repo tiene cambios sin commit, `src/fantasy/varianza/` cambió d
 registrado, la huella no coincide, o ya existe `validacion/2025_pganar.json`. 2025 se baja con
 `historico.bajar_espn_historico(2025, permitir_sellada=True)` y nflverse 2025 con la ingesta
 existente. Resultado: `validacion/2025_pganar.json` con Δ, IC95, tabla de calibración y
-`paso_1`, `paso_2`.
+`paso_1`, `paso_2`. El reporte solo cree en ese archivo si la huella de `modelos/varianza.joblib`
+coincide con la guardada.
+
+La misma corrida guarda `modelos/rol_previo_2026.csv` (rol promedio de 2025 por jugador), que es el
+"año anterior" del rol en vivo. Antes de la corrida no existe y no hace falta: el reporte no
+muestra nada.
 
 ## 4. Código, comandos y pruebas
 
