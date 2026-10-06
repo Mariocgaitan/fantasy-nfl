@@ -26,6 +26,10 @@
 <h1>BanKAI · semana {{ semana }}</h1>
 <p class="suave">Reporte {{ dia }} · generado {{ generado }} (Sídney)</p>
 
+{% if p_ganar is not none %}
+<p class="pganar"><strong>Probabilidad de ganar esta semana: {{ p_ganar }}%</strong>{% if p_ganar_preliminar %} <small>(preliminar: el rival aún puede cambiar su alineación)</small>{% endif %}</p>
+{% if explicaciones_pg %}<ul class="suave">{% for x in explicaciones_pg %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+{% endif %}
 <h2>Qué hacer</h2>
 {% set urg = acciones | selectattr("urgencia", "eq", "urgente") | list %}
 {% set rec = acciones | selectattr("urgencia", "eq", "recomendado") | list %}
