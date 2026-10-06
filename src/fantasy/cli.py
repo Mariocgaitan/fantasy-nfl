@@ -48,6 +48,10 @@ def _parser() -> argparse.ArgumentParser:
     va.add_argument("--raiz", type=Path, default=Path("historico"))
     vv = sub.add_parser("validar-en-vivo", help="aplica el criterio a 2026 con las instantáneas")
     vv.add_argument("--datos", type=Path, required=True)
+    vc = sub.add_parser("varianza-construir",
+                        help="grupos por rol (k con 2024) y colecciones de errores 2023–2024")
+    vc.add_argument("--raiz", type=Path, default=Path("historico"))
+    vc.add_argument("--salida", type=Path, default=Path("modelos/varianza.joblib"))
     return p
 
 
@@ -59,6 +63,20 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
             historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando == "varianza-construir":
+        from fantasy.ingesta import historico
+        from fantasy.varianza import artefacto, datos, grupos, rol
+        c23, c24 = (historico.cargar_historico(a.raiz, t) for t in (2023, 2024))
+        t23 = datos.tabla(c23, 2023)
+        t24 = datos.tabla(c24, 2024, previo=rol.promedio_temporada(rol.leer(c23)))
+        f23, f24 = datos.para_construir(t23), datos.para_construir(t24)
+        k, tabla_crps = grupos.elegir_k(f23, f24)
+        print(tabla_crps.to_string(index=False))
+        print(f"k elegido: {k}")
+        art = artefacto.construir(f23, pd.concat([f23, f24], ignore_index=True), k)
+        artefacto.guardar(art, a.salida)
+        print(f"Artefacto guardado en {a.salida}")
         return 0
     if a.comando == "validar-en-vivo":
         import json
