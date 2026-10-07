@@ -10,6 +10,48 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-05-prob-ganar-design.md`
 
+## Estado de ejecución (2026-10-06) — LEER PRIMERO AL RETOMAR
+
+**Hechas (commits en la rama `prob-ganar`):** Tasks 1–9. Suite completa: 238 pruebas en verde.
+Comandos con `uv run --no-env-file ...` (hay un `UV_ENV_FILE=.env` global y no existe `.env`).
+
+**Resultados hasta ahora:**
+- `varianza-construir` (Task 4) eligió **k = 1 en todas las posiciones**. La revisión de mitad de fase
+  mostró que **la prueba fue degenerada**: con solo 2023 para formar grupos, QB/TE tienen 180 filas
+  (toda celda < 200 → cae a la posición, CRPS idéntico para todo k) y en RB/WR (450 filas) solo
+  k = 2 se probó de verdad; k ≥ 3 cae a la posición. No prueba que el rol no importe.
+- Ensayo 2024, 200 ligas (Task 8, desarrollo): **gana más ❌** (delta 0.0, IC95 [−0.0001, 0.0001];
+  la alineación cambió en 23 de 24 000 enfrentamientos) · **porcentajes creíbles ✅** (máx. ±2.3
+  puntos por tramo). Sin grupos, jugadores de la misma posición y tramo tienen la misma
+  distribución y P(ganar) casi no puede preferir a uno.
+- Comprobación real: viernes de la semana 4 → P(ganar) **76%** contra Norway Ass.
+
+**Decisión de Mario (2026-10-06): opción B — hacer justa la prueba de grupos antes del sellado.**
+Siguiente paso al retomar (Task 4b, TDD):
+1. `grupos.elegir_k(..., minimo_celda=100)`: durante la **elección de k** la cadena de respaldo usa
+   un mínimo de 100 errores (no 200). Implementarlo como parámetro `minimo` en
+   `Colecciones.muestra` / `errores.construir` (por defecto `MINIMO_CELDA = 200`, que sigue rigiendo
+   el artefacto final). Prueba: con 450 filas WR estructuradas en 3 grupos, `elegir_k` con
+   mínimo 100 distingue k = 3 (CRPS distinto de k = 1).
+2. Volver a correr `uv run --no-env-file fantasy varianza-construir` y anotar la tabla CRPS y el k.
+3. Si cambia algún k, volver a correr `fantasy varianza-ensayo` (200 ligas, ~25 min, en segundo
+   plano) y anotar el resultado. Si no cambia, quedarse con el ensayo ya hecho.
+4. Anotar en la spec (sección 1b) el ajuste y su motivo (tamaño de los datos, no el resultado).
+
+**Después:** Task 10 (docs: `docs/ESTADO.md`, `README.md`; la decisión 25 ya está en
+`PROYECTO.md`), revisión final de la rama (subagente), PR. **El sellado de 2025
+(`varianza-registrar` + `varianza-validar --sellado-final`) solo con el visto bueno de Mario.**
+
+**Pendientes menores de la revisión (no bloquean):**
+- La reparación de la matriz de correlación puede debilitar pares si la matriz no es válida;
+  con las correlaciones reales (débiles) es improbable. Podría registrarse cuando ocurra.
+- Posible doble conteo de ausencias en vivo: los errores históricos ya incluyen 0 de jugadores
+  que no jugaron y en vivo además se aplica `p_jugar < 1` a los dudosos.
+- Los grupos se ajustan con filas de 2023 sin año previo y se aplican a filas que sí lo tienen.
+- `eficiencia` llega a ~10 con pocas oportunidades (puede sesgar k-means).
+
+Bitácora detallada (no versionada): `.superpowers/sdd/2026-10-05-prob-ganar/progress.md`.
+
 ## Global Constraints
 
 - **No modificar** `src/fantasy/modelo/`, `src/fantasy/ingesta/historico.py`, `src/fantasy/ingesta/nflverse.py` ni `src/fantasy/proyeccion/modelo.py` (modelo v2 congelado hasta la validación en vivo). Solo se **importan**.
