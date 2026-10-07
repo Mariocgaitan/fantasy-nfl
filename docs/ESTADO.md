@@ -1,4 +1,4 @@
-# Estado del proyecto — 2026-10-01
+# Estado del proyecto — 2026-10-06
 
 Documento de arranque para la próxima sesión. Léelo después de `PROYECTO.md` (el **qué**)
 y antes de la spec (`docs/superpowers/specs/2026-09-26-sistema-fantasy-design.md`, el
@@ -11,6 +11,7 @@ y antes de la spec (`docs/superpowers/specs/2026-09-26-sistema-fantasy-design.md
 | 0. Reporte provisional | **En producción** | Martes 19:00, viernes 08:00 y domingo 20:00 (Sídney): "Qué hacer" con urgencia (🔴/🟡/⚪), plantilla con lugares libres (respaldo o moneda de cambio), plan si alguien queda fuera, agencia libre e intercambios por semana, ganando rol (libres y banca de rivales). Página en GitHub Pages + aviso por Gmail. |
 | 1. Intercambios + modelo v1 | **En producción** | El reporte del martes propone hasta 5 intercambios (uno por rival). La agencia libre no suelta jugadores con ADP < 60. |
 | 2. Ejecución autorizada | **Sin empezar** | Botones → issue de GitHub → escribir en ESPN; vigilante de inactivos. |
+| 4. Probabilidad de ganar | **En curso — rama `prob-ganar` (sin fusionar)** | Ver "Trabajo en curso" abajo. |
 | 3. Modelo serio + validación | **Hecha; el modelo NO pasó** | Modelo v2 (ridge sobre la corrección a ESPN calibrada, con contexto del partido). La corrida sellada de 2025 se hizo una vez y falló (ver abajo). |
 
 Decide **ESPN** (sin calibrar en el reporte, porque no hay modelo validado). El modelo v2
@@ -24,6 +25,19 @@ RB, WR y TE peor. **No pasa** la decisión 19. La mejora de 2024 (−0.02) era r
 
 Por la decisión 23, el plan B es la **validación en vivo 2026** con el mismo modelo
 congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
+
+## Trabajo en curso: probabilidad de ganar (rama `prob-ganar`)
+
+Tras perder la semana 4, el sistema calculará la **probabilidad de ganar** contra el rival real y,
+si pasa una validación única sobre 2025 (decisión 25), alineará para maximizarla en decisiones
+parejas. Spec: `docs/superpowers/specs/2026-10-05-prob-ganar-design.md`. Plan:
+`docs/superpowers/plans/2026-10-05-prob-ganar.md` — **su sección "Estado de ejecución" dice
+exactamente dónde quedó y el siguiente paso** (Task 4b: hacer justa la prueba de grupos por rol,
+opción B que eligió Mario el 2026-10-06). Tasks 1–9 hechas; faltan 4b, docs, revisión final y PR.
+El sellado de 2025 solo con el visto bueno de Mario. Mientras no se fusione, el reporte de
+producción (que corre desde `main`) no cambia.
+
+Para retomar: `git checkout prob-ganar` y leer esa sección del plan.
 
 ## Pendientes, en orden
 
@@ -64,7 +78,11 @@ congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
   todos los días menos martes; la prioridad solo se mueve cuando un pedido se concreta.
 - Plantilla al 2026-10-01: Shough y Bryce Young (QB), Gibbs, Jeanty, Cook (RB),
   Amon-Ra St. Brown, Parker Washington, Watson, Nabers, Golden (WR), McBride, Juwan
-  Johnson (TE), Caleb Williams (QB, lesionado). Récord 1-0 (semana 3: 149.0 a 105.5).
+  Johnson (TE), Caleb Williams (QB, lesionado), J.K. Dobbins (RB, desde el 2026-10-02).
+- Récord **1-1**: semana 3 ganó 149.0 a 105.5 (Smashers); semana 4 perdió **101.7 a 149.5
+  contra Norway Ass** (iba +22.1 proyectado, ≈75%; Nabers hizo 23.2 en la banca y aun con la
+  alineación perfecta, 122.9, perdía). El enfrentamiento de la semana N es `matchupPeriodId == N`
+  en ESPN (`espn.rival_de` lo hace bien).
 - Intercambio hecho: Hall + Swift + Collins → Amon-Ra (con Chumpi, 2026-09-30).
 
 ## Sincronía reporte ↔ sesión
