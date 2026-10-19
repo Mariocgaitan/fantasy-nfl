@@ -1,8 +1,8 @@
 # Desempate por total esperado del equipo — diseño
 
 > 2026-10-19. Rama `desempate` (desde `main`, independiente de `prob-ganar`).
-> Este documento es también el **registro de la regla congelada**: la sección 3 no se
-> cambia después de leer 2025.
+> Versión reducida: el reporte marca empates; no desempata. La sección 3 deja registrada
+> la regla por si se retoma la prueba de 2025.
 
 ## 1. Por qué
 
@@ -63,34 +63,35 @@ mejor, así que la confirmación en datos no vistos es obligatoria.
 Los scripts de exploración no se versionan (quedaron en el scratchpad de la sesión); la
 sección 3 es la definición que manda.
 
-## 2. Objetivos, no objetivos, anti-objetivos
+## 2. Alcance: versión reducida (decisión de Mario, 2026-10-19)
+
+Con la medición en pares en conflicto, 2026 va en contra (48.1 %). Lo más probable es que
+2025 no pase, así que **no se gasta la prueba de 2025 ahora** y el reporte **no desempata**.
+Se construye solo lo que sirve de todos modos: saber cuándo una decisión es una moneda al
+aire.
 
 **Objetivos**
 1. El reporte marca como **empate** las decisiones de alineación con ≤ 1.0 punto de
-   diferencia y muestra el total esperado del equipo de cada jugador.
-2. Una **prueba única sobre 2025** decide si el desempate manda.
-3. Si pasa, el reporte desempata solo y lo dice en una línea.
-4. Un comando de **seguimiento en 2026** que repite la misma medición.
+   diferencia y como **casi empate** las de 1.0 a 2.0, con el total esperado del equipo de
+   cada jugador como dato.
 
 **No objetivos**
-- No cambia la proyección de ningún jugador. Tras un intercambio por desempate, el total
-  esperado de la alineación es la suma honesta de los que quedan (vía `_armar`), así que
-  puede bajar hasta 1.0 punto por intercambio.
+- No cambia la alineación, ni la proyección de nadie, ni los puntos esperados.
+- No corre la prueba de 2025 ni construye su comando (sección 3 queda registrada para
+  después). No hay comando de seguimiento 2026 en esta rama.
 - No toca agencia libre, intercambios ni el modelo v2 (`src/fantasy/modelo/` queda
   intacto: lo protege la huella de la validación en vivo; ver `docs/ESTADO.md`).
-- No sustituye a la probabilidad de ganar (`prob-ganar`), que sigue su propio camino.
-  Esta rama se construye sobre `main` y no integra nada de `prob-ganar`. Cuando se junten,
-  si las dos pasan su prueba de 2025, **manda la probabilidad de ganar** en las decisiones
-  parejas (mide el partido completo contra el rival real). El desempate queda como dato
-  mostrado y como respaldo cuando la probabilidad de ganar no haya pasado. Esa integración
-  es trabajo de la rama que se fusione después.
+- No integra nada de `prob-ganar`; esta rama sale de `main`.
 
-**Anti-objetivos (sería un fracaso aunque funcione)**
-- Cambiar la regla de la sección 3 después de haber visto 2025, o correr 2025 dos veces.
-- Que el desempate meta a un jugador en duda o lesionado en lugar de uno sano.
-- Que el reporte desempate antes de que la prueba de 2025 pase.
+**Anti-objetivos**
+- Que la marca sugiera al jugador del mayor total de equipo como "mejor": es un dato, no
+  una recomendación, porque la regla no está validada.
+- Gastar 2025 o cambiar la sección 3 sin que Mario retome la prueba.
 
-## 3. La regla congelada (registro)
+## 3. La regla registrada (para una prueba futura)
+
+Si Mario retoma el desempate (por ejemplo, si al final de 2026 la regla se recupera en
+vivo), esta es la definición congelada. 2025 sigue sin tocar para esta pregunta.
 
 **Datos.** Filas de `variables.desde_crudos_v2(crudos, temporada)` (las mismas que usó la
 exploración; `pts_equipo` sin línea queda en el valor neutro 22.0, como en el modelo v2),
@@ -119,73 +120,28 @@ puntos (decisión 20) y está reservada una vez para la varianza (decisión 25, 
 
 ## 4. Qué se construye
 
-### 4.1 Medición (`src/fantasy/desempate/`, módulo nuevo)
-
-Una función pura que, dada la tabla de filas de una temporada, devuelve: acierto global,
-IC95, número de pares, número de semanas, acierto y pares por posición, y acierto por
-semana. Implementa exactamente la sección 3. Las constantes (`UMBRAL = 1.0`,
-`SEMANAS = range(3, 18)`, `REMUESTREOS = 2000`, `SEMILLA = 0`) viven en ese módulo.
-
-### 4.2 Prueba única 2025
-
-Comando `fantasy desempate-validar --sellado-final`, con el patrón de
-`modelo/validacion.validar_sellado`:
-
-- Se niega si ya existe `validacion/2025_desempate.json`, si el repo tiene cambios sin
-  commit o si `src/fantasy/desempate/` cambió desde el registro.
-- **Registro previo:** `fantasy desempate-registrar` guarda en
-  `validacion/registro_desempate.json` el commit y la huella (sha256) de los archivos de
-  `src/fantasy/desempate/`. La prueba exige que coincidan.
-- Todas las verificaciones van antes de bajar 2025. 2025 se baja como en la corrida
-  sellada del modelo (`historico.bajar_espn_historico(2025, permitir_sellada=True)` +
-  nflverse 2025 con la ingesta existente).
-- Guarda `validacion/2025_desempate.json`: resultado de 4.1, `paso`, commit, huella, fecha.
-- **Solo Mario autoriza correrla.** El plan llega hasta dejarla lista; la sesión le pide
-  el visto bueno antes de ejecutarla.
-
-### 4.3 Reporte
+### Reporte
 
 Para cada titular movible (no bloqueado) se busca la **mejor alternativa de la banca** que
-pueda ocupar su lugar (misma posición; RB/WR/TE para el FLEX), no bloqueada, sana
-(`lesion == "ACTIVE"`) y con `esperado > 0`. Si `|esperado_titular − esperado_alternativa|
-≤ 1.0` y el titular también está sano, la decisión es un **empate**.
+pueda ocupar su lugar (misma posición; RB/WR/TE para el FLEX), no bloqueada y con
+`esperado > 0`. Con `d = esperado_titular − esperado_alternativa`:
 
-- **Casi empates** (diferencia entre 1.0 y 2.0): se muestran solo como dato, sin
-  desempatar nunca.
-- **Siempre** (pase o no la prueba): el reporte muestra el empate en la sección de la
-  alineación con los dos nombres, sus proyecciones y el total esperado de su equipo
-  (formato ilustrativo: "Empate: Washington 14.1 (su equipo espera X) · Watson 13.8 (su
-  equipo espera Y)").
-- **Si `validacion/2025_desempate.json` tiene `paso: true`:** si la alternativa tiene mayor
-  `pts_equipo`, se intercambian. Una sola pasada sobre los lugares en el orden de la
-  alineación; cada jugador participa en a lo más un intercambio. El intercambio aparece en
-  "Qué hacer" como parte del cambio de alineación, con la razón en una línea.
-- **Si no pasó o no se ha corrido:** el reporte no cambia la alineación; el empate se
-  muestra como dato para que Mario decida.
-- Orden respecto a las reglas existentes: `optima` → desempate → `aplicar_regla_duda` →
-  `reemplazos`. Como el desempate solo mueve jugadores sanos, la regla de duda sigue
-  igual.
-- Si a alguno de los dos le falta la línea (no hay `juegos` o su partido no aparece), el
-  empate se muestra con "sin línea" y no se desempata.
+- `d ≤ 1.0` → **empate**; `1.0 < d ≤ 2.0` → **casi empate**; más → nada.
+- Se compara con `esperado` (proyección × probabilidad de jugar), lo mismo que usa la
+  alineación, y sobre la alineación **final** (después de `aplicar_regla_duda`).
+- Cada empate se muestra en la sección de la plantilla con los dos nombres, sus puntos y el
+  total esperado de su equipo según las apuestas (formato ilustrativo: "Empate:
+  Washington 14.1 (su equipo espera X) · Watson 13.8 (su equipo espera Y)"). Si falta la
+  línea de alguno, dice "sin línea".
+- Una nota fija explica en una línea qué significa: con menos de 1 punto la proyección
+  acierta ~51 %, como una moneda; decide Mario.
+- No aparece en "Qué hacer" ni cambia la urgencia: es información de la plantilla.
 - Aplica a los tres reportes (martes, viernes, domingo); las líneas se leen de
-  `crudos["juegos"]` con `contexto.lineas`, como ya hace el modelo v2 en vivo.
-
-### 4.4 Seguimiento 2026
-
-Comando `fantasy desempate-vivo` que aplica 4.1 a la temporada 2026 y escribe
-`validacion/2026_desempate_vivo.json` (se sobrescribe en cada corrida). Es **informativo**:
-no apaga ni enciende el desempate.
-
-- **Datos:** los mismos que baja el reporte (`bajar_espn` + `bajar_nflverse` +
-  `nflverse.bajar_juegos`), que es como se obtuvo el 52.0 % de la sección 1. La población
-  es menor que la histórica (plantillas + top libres), pero los relevantes son casi todos
-  jugadores con dueño.
-- **Equipo de cada jugador:** `desde_crudos_v2(crudos, 2026, equipo_desde_espn=True)`. Con
-  el equipo previo de nflverse, la semana 1 quedaría toda en el valor neutro y se perdería.
-  Costo aceptado: un jugador cambiado de equipo a mitad de temporada queda con su equipo
-  actual en las semanas anteriores.
-- **Semanas:** todas las semanas NFL terminadas, desde la 1. La regla no usa la historia
-  del jugador, así que para 2026 no se exige empezar en la 3.
+  `crudos["juegos"]` con `contexto.lineas`, como ya hace el modelo v2 en vivo. El equipo
+  NFL de cada jugador sale de ESPN (como en el resto del reporte), convertido al código de
+  nflverse con `contexto.a_nflverse`.
+- Si un jugador de la banca es la mejor alternativa de dos titulares, aparece en los dos
+  empates (es información, no un intercambio).
 
 ## 5. Restricciones
 
@@ -200,26 +156,20 @@ no apaga ni enciende el desempate.
 - Las proyecciones históricas de semanas pasadas son las que ESPN guarda ahora (supuesto
   ya aceptado en la decisión 18). Las líneas históricas de nflverse son cercanas al cierre;
   en vivo el martes son más tempranas. El reporte del domingo es el más parecido a lo medido.
-- La ventaja esperada es chica (~4 aciertos más por cada 100 empates). En una temporada,
-  Mario tiene pocos empates por semana: el valor está en no tirar la moneda a ciegas.
+- La ventaja medida en 2023–2024 era chica y en 2026 no aparece; por eso el total de
+  equipo se muestra como dato y no decide.
 
 ## 7. Documentación al terminar
 
-- `PROYECTO.md`: nueva decisión **26** (la 25 la usa la rama `prob-ganar`; si esa rama no
-  se fusiona antes, se conserva el número 26 y se anota el hueco).
-- `docs/ESTADO.md`: fase nueva, resultado de 2025 cuando exista, cómo correr el seguimiento.
+- `docs/ESTADO.md`: la marca de empates en el reporte, la exploración (sección 1) y que la
+  prueba de 2025 del desempate queda registrada sin correr.
 - `README.md`: una línea sobre los empates en el reporte.
+- `PROYECTO.md`: sin decisión nueva (no cambia quién manda).
 
 ## 8. Decisiones que tomé yo (Claude), para que Mario las revise
 
-- Umbral de empate de 1.0 punto en el reporte, igual que en la prueba; los casi empates
-  (1.0–2.0) solo se muestran.
-- En vivo el empate se mide con `esperado` (proyección × probabilidad de jugar), que es lo
-  que ya usa la alineación; en la prueba histórica, con `proy_espn`.
-- El desempate solo considera jugadores sanos y se aplica antes de la regla de duda.
-- Sin condición por posición en el criterio de pase.
-- El seguimiento 2026 es informativo y no apaga el desempate.
-- El seguimiento 2026 usa los datos del reporte y el equipo actual de ESPN, para poder
-  contar la semana 1.
-- Tras un intercambio por desempate, el total de la alineación se muestra con la suma real.
-- Si `prob-ganar` y el desempate pasan los dos, manda `prob-ganar` en las decisiones parejas.
+- Umbrales: empate ≤ 1.0, casi empate 1.0–2.0, medidos con `esperado` sobre la alineación
+  final.
+- La marca va en la sección de la plantilla, no en "Qué hacer".
+- No hay comando de seguimiento 2026 en esta rama; si se retoma, se construye junto con la
+  prueba de 2025.
