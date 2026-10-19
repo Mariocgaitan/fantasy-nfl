@@ -10,6 +10,7 @@ y antes de la spec (`docs/superpowers/specs/2026-09-26-sistema-fantasy-design.md
 |---|---|---|
 | 0. Reporte provisional | **En producción** | Martes 19:00, viernes 08:00 y domingo 20:00 (Sídney): "Qué hacer" con urgencia (🔴/🟡/⚪), plantilla con lugares libres (respaldo o moneda de cambio), plan si alguien queda fuera, agencia libre e intercambios por semana, ganando rol (libres y banca de rivales). Página en GitHub Pages + aviso por Gmail. |
 | 1. Intercambios + modelo v1 | **En producción** | El reporte del martes propone hasta 5 intercambios (uno por rival). La agencia libre no suelta jugadores con ADP < 60. |
+| Empates en el reporte | **En producción al fusionar la rama `desempate`** | Sección "Decisiones parejas": empate (≤ 1 punto) y casi empate (1–2) entre un titular y su mejor suplente, con el total esperado de su equipo según las apuestas. Solo informa. |
 | 2. Ejecución autorizada | **Sin empezar** | Botones → issue de GitHub → escribir en ESPN; vigilante de inactivos. |
 | 4. Probabilidad de ganar | **En curso — rama `prob-ganar` (sin fusionar)** | Ver "Trabajo en curso" abajo. |
 | 3. Modelo serio + validación | **Hecha; el modelo NO pasó** | Modelo v2 (ridge sobre la corrección a ESPN calibrada, con contexto del partido). La corrida sellada de 2025 se hizo una vez y falló (ver abajo). |
@@ -38,6 +39,17 @@ El sellado de 2025 solo con el visto bueno de Mario. Mientras no se fusione, el 
 producción (que corre desde `main`) no cambia.
 
 Para retomar: `git checkout prob-ganar` y leer esa sección del plan.
+
+## Empates y desempate por total de equipo (2026-10-19)
+
+Spec: `docs/superpowers/specs/2026-10-19-desempate-design.md`. Exploración en 2023–2024 (2025
+sin tocar): el sesgo por jugador respecto a ESPN no persiste; lo único que inclina el
+resultado es el total esperado del equipo según las apuestas. Con proyecciones a ≤ 1 punto,
+la de ESPN acierta 51.0 % (una moneda) y el mayor total de equipo 53.9 %; **en los pares en
+conflicto** (lo que de verdad cambiaría una decisión) 52.9 % en 2023–2024 y **48.1 % en 2026,
+semanas 1–6**. Por eso se construyó solo la marca de empates (sin desempatar). La regla queda
+**registrada sin correr** (spec, sección 3); 2025 sigue sin usar para esta pregunta. Se puede
+retomar si al final de 2026 la regla se recupera en vivo.
 
 ## Pendientes, en orden
 
