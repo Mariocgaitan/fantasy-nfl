@@ -38,9 +38,27 @@ del 50 %:
 | Mayor proyección ESPN | 51.0 % | [49.7, 52.3] |
 | Los otros siete (rival, rol, racha, regularidad, promedio) | 49–51 % | incluyen el 50 % |
 
-Seguimiento 2026, semanas NFL 1–6 (1 267 pares): **52.0 %**, IC95 [49.2, 54.9]. Va en la
-misma dirección, pero aún no es concluyente. Se probaron 9 criterios y se eligió el mejor,
-así que la confirmación en datos no vistos es obligatoria.
+Seguimiento 2026, semanas NFL 1–6 (1 267 pares): **52.0 %**, IC95 [49.2, 54.9].
+
+**Lo que importa son los pares en conflicto** (ESPN prefiere a uno y el total de equipo al
+otro): en los demás el desempate elige lo mismo que ESPN y no cambia nada. Ahí se ve si vale
+la pena contradecir a ESPN, y por eso la regla congelada (sección 3) mide solo esos pares.
+Gana el de menor proyección y mayor total de equipo:
+
+| Diferencia de proyección | 2023–2024 |
+|---|---|
+| 0–0.5 | 53.4 % |
+| 0.5–1.0 | 52.4 % |
+| 1.0–1.5 | 48.4 % |
+| 1.5–2.0 | 47.9 % |
+| 2.0–3.0 | 46.3 % |
+| **≤ 1.0 (la regla)** | **52.9 %**, IC95 [50.8, 55.2], 3 498 pares |
+| ≤ 2.0 | 50.8 %, IC95 [48.6, 53.1] |
+
+Por eso el umbral es 1.0: de 1 a 2 puntos ESPN ya sabe más (Mario preguntó por 2; se
+descartó con esta tabla). **En 2026, semanas 1–6, en conflicto: 48.1 %**, IC95 [45.8, 50.0],
+615 pares: hasta ahora la regla pierde contra ESPN. Se probaron 9 criterios y se eligió el
+mejor, así que la confirmación en datos no vistos es obligatoria.
 
 Los scripts de exploración no se versionan (quedaron en el scratchpad de la sesión); la
 sección 3 es la definición que manda.
@@ -81,9 +99,11 @@ relevantes con `evaluar.relevantes` (top 12 QB, 30 RB, 30 WR, 12 TE por `proy_es
 **aplicado temporada por temporada**.
 
 **Pares.** Todas las combinaciones de dos jugadores de la misma semana y posición con
-`|proy_espn_a − proy_espn_b| ≤ 1.0`, `real_a ≠ real_b` y `pts_equipo_a ≠ pts_equipo_b`.
+`0 < |proy_espn_a − proy_espn_b| ≤ 1.0`, `real_a ≠ real_b`, `pts_equipo_a ≠ pts_equipo_b`
+y **en conflicto**: el de mayor `proy_espn` tiene menor `pts_equipo`.
 
-**Acierto.** El par es acierto si el jugador con mayor `pts_equipo` hizo más puntos reales.
+**Acierto.** El par es acierto si el jugador con mayor `pts_equipo` (el de menor
+proyección) hizo más puntos reales.
 
 **Intervalo.** Bootstrap percentil del 95 % remuestreando **semanas** con reemplazo (cada
 semana aporta sus aciertos y su número de pares), **2 000** remuestreos, semilla **0**.
@@ -130,6 +150,8 @@ pueda ocupar su lugar (misma posición; RB/WR/TE para el FLEX), no bloqueada, sa
 (`lesion == "ACTIVE"`) y con `esperado > 0`. Si `|esperado_titular − esperado_alternativa|
 ≤ 1.0` y el titular también está sano, la decisión es un **empate**.
 
+- **Casi empates** (diferencia entre 1.0 y 2.0): se muestran solo como dato, sin
+  desempatar nunca.
 - **Siempre** (pase o no la prueba): el reporte muestra el empate en la sección de la
   alineación con los dos nombres, sus proyecciones y el total esperado de su equipo
   (formato ilustrativo: "Empate: Washington 14.1 (su equipo espera X) · Watson 13.8 (su
@@ -190,7 +212,8 @@ no apaga ni enciende el desempate.
 
 ## 8. Decisiones que tomé yo (Claude), para que Mario las revise
 
-- Umbral de empate de 1.0 punto en el reporte, igual que en la prueba.
+- Umbral de empate de 1.0 punto en el reporte, igual que en la prueba; los casi empates
+  (1.0–2.0) solo se muestran.
 - En vivo el empate se mide con `esperado` (proyección × probabilidad de jugar), que es lo
   que ya usa la alineación; en la prueba histórica, con `proy_espn`.
 - El desempate solo considera jugadores sanos y se aplica antes de la regla de duda.
