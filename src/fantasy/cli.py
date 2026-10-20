@@ -134,13 +134,10 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             r = git("status", "--porcelain")
             return r.returncode == 0 and r.stdout.strip() == ""
 
-        def varianza_igual(commit):
-            return git("diff", "--quiet", commit, "HEAD", "--",
-                       "src/fantasy/varianza").returncode == 0
-
         res = validar.validar_sellado(registro, a.artefacto, obtener_2025,
                                       RUTA_VALIDACION / validar.RESULTADO,
-                                      git_limpio=git_limpio, varianza_igual=varianza_igual)
+                                      git_limpio=git_limpio,
+                                      src_igual=lambda c: validar.codigo_igual(c, git))
         # El "año anterior" del rol en vivo de 2026.
         rol.promedio_temporada(rol.leer(guardado["crudos"])).to_csv(RUTA_ROL_PREVIO,
                                                                      index=False)

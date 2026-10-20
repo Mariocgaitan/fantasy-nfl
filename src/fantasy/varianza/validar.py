@@ -52,15 +52,23 @@ def estado(raiz: Path, ruta_artefacto: Path) -> dict:
             "paso_2": datos.get("paso_2") is True}
 
 
+# Todo src/: el resultado también depende de alineacion, evaluar, variables, espn y la cli.
+RUTA_SELLADA = "src"
+
+
+def codigo_igual(commit: str, git) -> bool:
+    return git("diff", "--quiet", commit, "HEAD", "--", RUTA_SELLADA).returncode == 0
+
+
 def validar_sellado(registro: dict, ruta_artefacto: Path, obtener_2025, destino: Path, *,
-                    git_limpio, varianza_igual) -> dict:
+                    git_limpio, src_igual) -> dict:
     """Corre una sola vez. Todas las verificaciones van antes de tocar 2025."""
     if destino.exists():
         raise RuntimeError(f"la validación de la varianza ya se corrió: {destino}")
     if not git_limpio():
         raise RuntimeError("el repo tiene cambios sin commit: congela todo antes de validar")
-    if not varianza_igual(registro["commit"]):
-        raise RuntimeError("src/fantasy/varianza cambió desde el registro: vuelve a registrar")
+    if not src_igual(registro["commit"]):
+        raise RuntimeError("src/ cambió desde el registro: vuelve a registrar")
     if huella(ruta_artefacto) != registro["sha256"]:
         raise RuntimeError("la huella del artefacto no coincide con el registro")
     art = artefacto.cargar(ruta_artefacto)

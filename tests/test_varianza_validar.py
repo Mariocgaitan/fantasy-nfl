@@ -58,21 +58,38 @@ def test_sellado_se_niega(tmp_path):
     destino = tmp_path / validar.RESULTADO
     nunca = lambda: pytest.fail("no debe tocar 2025")
     casos = [
-        {"git_limpio": lambda: False, "varianza_igual": lambda c: True},
-        {"git_limpio": lambda: True, "varianza_igual": lambda c: False},
+        {"git_limpio": lambda: False, "src_igual": lambda c: True},
+        {"git_limpio": lambda: True, "src_igual": lambda c: False},
     ]
     for kw in casos:
         with pytest.raises(RuntimeError):
             validar.validar_sellado(reg, ruta, nunca, destino, **kw)
+    with pytest.raises(RuntimeError, match="src/ cambió"):
+        validar.validar_sellado(reg, ruta, nunca, destino, **casos[1])
     with pytest.raises(RuntimeError, match="huella"):
         validar.validar_sellado({**reg, "sha256": "x"}, ruta, nunca, destino,
-                                git_limpio=lambda: True, varianza_igual=lambda c: True)
+                                git_limpio=lambda: True, src_igual=lambda c: True)
     destino.write_text("{}", encoding="utf-8")
     with pytest.raises(RuntimeError, match="ya se corrió"):
         validar.validar_sellado(reg, ruta, nunca, destino,
-                                git_limpio=lambda: True, varianza_igual=lambda c: True)
+                                git_limpio=lambda: True, src_igual=lambda c: True)
 
 
 def test_cli_validar_sin_bandera_no_corre():
     from fantasy.cli import main
     assert main(["varianza-validar"]) == 2
+
+
+def test_el_sello_congela_todo_src():
+    # El resultado de 2025 también depende de alineacion, evaluar, variables, espn y la cli.
+    vistos = []
+
+    class R:
+        returncode = 0
+
+    def git(*args):
+        vistos.append(args)
+        return R()
+
+    assert validar.codigo_igual("abc", git)
+    assert vistos == [("diff", "--quiet", "abc", "HEAD", "--", "src")]

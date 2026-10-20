@@ -156,7 +156,7 @@ los reales solo resuelven.
 **Sellado (`varianza/validar.py`).** `fantasy varianza-registrar` congela
 `validacion/registro_pganar.json` (commit, `k` por posición, huella de
 `modelos/varianza.joblib`, semillas, parámetros). `fantasy varianza-validar --sellado-final`
-se niega si: el repo tiene cambios sin commit, `src/fantasy/varianza/` cambió desde el commit
+se niega si: el repo tiene cambios sin commit, `src/` (todo el código, no solo `varianza/`; ajuste del 2026-10-19 por la revisión final) cambió desde el commit
 registrado, la huella no coincide, o ya existe `validacion/2025_pganar.json`. 2025 se baja con
 `historico.bajar_espn_historico(2025, permitir_sellada=True)` y nflverse 2025 con la ingesta
 existente. Resultado: `validacion/2025_pganar.json` con Δ, IC95, tabla de calibración y
