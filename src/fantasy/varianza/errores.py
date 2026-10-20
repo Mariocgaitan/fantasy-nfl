@@ -22,10 +22,11 @@ class Colecciones:
         bajo, alto = self.cortes[pos]
         return int(proy > bajo) + int(proy > alto)
 
-    def muestra(self, pos: str, grupo: int, tramo: int) -> np.ndarray:
+    def muestra(self, pos: str, grupo: int, tramo: int,
+                minimo: int = MINIMO_CELDA) -> np.ndarray:
         for clave in ((pos, int(grupo), int(tramo)), (pos, int(grupo))):
             m = self.muestras.get(clave)
-            if m is not None and len(m) >= MINIMO_CELDA:
+            if m is not None and len(m) >= minimo:
                 return m
         return self.muestras[(pos,)]
 

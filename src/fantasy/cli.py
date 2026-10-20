@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
         t23 = datos.tabla(c23, 2023)
         t24 = datos.tabla(c24, 2024, previo=rol.promedio_temporada(rol.leer(c23)))
         f23, f24 = datos.para_construir(t23), datos.para_construir(t24)
-        k, tabla_crps = grupos.elegir_k(f23, f24)
+        k, tabla_crps = grupos.elegir_k(f23, f24, minimo_celda=grupos.MINIMO_ELECCION)
         print(tabla_crps.to_string(index=False))
         print(f"k elegido: {k}")
         art = artefacto.construir(f23, pd.concat([f23, f24], ignore_index=True), k)

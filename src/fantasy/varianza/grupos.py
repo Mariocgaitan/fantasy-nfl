@@ -11,6 +11,10 @@ from fantasy.varianza import errores
 from fantasy.varianza.rol import RASGOS
 
 EMPATE = 0.01  # 1% de CRPS: se prefiere el k más chico
+# Al elegir k la cadena de respaldo exige 100 errores por celda, no 200: con una sola temporada
+# para formar grupos, 200 hacía caer todo k >= 3 a la posición y la prueba era degenerada.
+# El artefacto final sigue usando errores.MINIMO_CELDA.
+MINIMO_ELECCION = 100
 
 
 @dataclass
@@ -48,24 +52,26 @@ def asignar(grupos: dict[str, GruposPos], filas: pd.DataFrame) -> pd.Series:
     return salida
 
 
-def _crps_medio(g: GruposPos, c: pd.DataFrame, e: pd.DataFrame, pos: str) -> float:
+def _crps_medio(g: GruposPos, c: pd.DataFrame, e: pd.DataFrame, pos: str,
+                minimo: int = errores.MINIMO_CELDA) -> float:
     col = errores.construir(c.assign(grupo=g.asignar(c)))
     d = pd.DataFrame({"g": g.asignar(e), "t": [col.tramo(pos, x) for x in e.proy_espn],
                       "z": (e.real - e.proy_espn).to_numpy(float)})
-    total = sum(errores.crps(col.muestra(pos, gi, ti), s.z.to_numpy()).sum()
+    total = sum(errores.crps(col.muestra(pos, gi, ti, minimo), s.z.to_numpy()).sum()
                 for (gi, ti), s in d.groupby(["g", "t"]))
     return float(total / len(d))
 
 
 def elegir_k(construccion: pd.DataFrame, eleccion: pd.DataFrame, ks=range(1, 6),
-             semilla: int = 0) -> tuple[dict[str, int], pd.DataFrame]:
+             semilla: int = 0, minimo_celda: int = errores.MINIMO_CELDA,
+             ) -> tuple[dict[str, int], pd.DataFrame]:
     elegido, filas = {}, []
     for pos in errores.POS:
         c = construccion[(construccion.pos == pos) & construccion.real.notna()]
         e = eleccion[(eleccion.pos == pos) & eleccion.real.notna()]
         if c.empty or e.empty:
             continue
-        res = {k: _crps_medio(ajustar(c, pos, k, semilla), c, e, pos) for k in ks}
+        res = {k: _crps_medio(ajustar(c, pos, k, semilla), c, e, pos, minimo_celda) for k in ks}
         filas += [{"pos": pos, "k": k, "crps": v} for k, v in res.items()]
         mejor = min(res.values())
         elegido[pos] = min(k for k, v in res.items() if v <= mejor * (1 + EMPATE))
