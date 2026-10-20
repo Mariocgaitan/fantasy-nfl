@@ -55,6 +55,14 @@
   {% endfor %}
 </table>
 <p class="suave">Puntos: lo que ESPN espera que haga esta semana.</p>
+{% macro espera(p) %}{% if p is none %}(sin línea){% else %}(su equipo espera {{ p }}){% endif %}{% endmacro %}
+{% if empates %}<h3>Decisiones parejas</h3>
+<ul>
+  {% for e in empates %}<li>{% if e.tipo == "empate" %}Empate{% else %}Casi empate{% endif %} en {{ e.slot }}: {{ e.titular }} {{ e.proy_titular }} {{ espera(e.pts_titular) }} · {{ e.alternativa }} {{ e.proy_alternativa }} {{ espera(e.pts_alternativa) }}</li>
+  {% endfor %}
+</ul>
+<p class="suave">Empate: 1 punto o menos de diferencia; la proyección acierta ~51 %, como una moneda. Casi empate: de más de 1 a 2 puntos. Aquí los puntos ya descuentan la probabilidad de que juegue (un jugador en duda cuenta menos), por eso pueden ser menores que en la tabla. "Su equipo espera": puntos que las apuestas esperan del equipo del jugador; es un dato, no una recomendación. Decides tú.</p>
+{% endif %}
 
 <h2>Si alguien queda fuera</h2>
 <table>

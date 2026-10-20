@@ -19,6 +19,9 @@ solo mandará cuando le gane a ESPN en un backtest 2024–2025 sin fuga de datos
 
 Con `--instantanea <carpeta>` corre sin red a partir de datos guardados.
 
+Marca las decisiones parejas (empate y casi empate) con los puntos que las apuestas esperan
+de cada equipo.
+
 ## Fase 1: intercambios y modelo (preliminar)
 
 El reporte del martes propone hasta 5 intercambios (uno por rival, nunca con el rival de la
