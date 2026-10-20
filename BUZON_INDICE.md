@@ -46,3 +46,12 @@
   con 2026 (decisión 23).
 - ESTADO: fases 0, 1 y 3 en producción; fase 2 (ejecución en ESPN) sin empezar. Arranque
   de la próxima sesión en `docs/ESTADO.md`.
+
+## 2026-10-19
+- HITO: marca de empates en el reporte (PR #8, fusionado). Antes se exploró en 2023–2024 si el
+  sesgo de cada jugador respecto a ESPN persiste (idea de Mario: caminata aleatoria con sesgo):
+  no persiste; solo el total esperado del equipo según las apuestas inclina el resultado, y en
+  2026 no se sostuvo, así que el reporte informa los empates sin desempatar.
+- HITO: probabilidad de ganar construida (PR #9). Con la prueba justa de grupos por rol, k = 1
+  en todas las posiciones; el ensayo 2024 no gana más, pero los porcentajes son creíbles. La
+  prueba única de 2025 queda pendiente del visto bueno de Mario.
