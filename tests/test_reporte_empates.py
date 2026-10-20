@@ -47,3 +47,9 @@ def test_pagina_muestra_empates_y_nota():
     html = generar_html(_r())
     assert "Empate en" in html and "Casi empate en" in html and "sin línea" not in html
     assert "moneda" in html
+
+
+def test_nota_explica_que_los_puntos_descuentan_la_probabilidad_de_jugar():
+    html = generar_html(_r())
+    assert "probabilidad de que juegue" in html
+    assert "1 punto o menos" in html
