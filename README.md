@@ -53,6 +53,19 @@ calibrada, no ESPN tal cual. **2025 sigue sellado** para esa validación.
     uv run fantasy entrenar                   # entrena y guarda modelos/modelo_v1.json
     uv run fantasy evaluar --temporada 2024   # walk-forward contra ESPN (2025 rechazado)
 
+## Probabilidad de ganar
+
+Simula la semana contra el rival real (los errores históricos de ESPN por posición, con la
+correlación entre compañeros del mismo equipo) y da la probabilidad de ganar. Si pasa una
+prueba única sobre 2025, que gane más enfrentamientos en ligas simuladas y que sus porcentajes
+sean creíbles, además elige la alineación en decisiones parejas. Si solo pasa lo segundo, el
+reporte muestra el porcentaje sin cambiar nada.
+
+    uv run fantasy varianza-construir
+    uv run fantasy varianza-ensayo
+    uv run fantasy varianza-registrar
+    uv run fantasy varianza-validar --sellado-final
+
 ## Fase 3: modelo serio y validación
 
 El modelo v2 predice la **corrección** a ESPN calibrada (ESPN × k, con k estimado en
