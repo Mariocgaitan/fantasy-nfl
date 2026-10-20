@@ -15,6 +15,7 @@ from fantasy.config import (
 )
 from fantasy.decision import acciones as acciones_mod
 from fantasy.decision import agencia_libre, lugar_libre
+from fantasy.decision import empates as empates_mod
 from fantasy.decision import intercambios as intercambios_mod
 from fantasy.decision.acciones import Accion
 from fantasy.decision.agencia_libre import ADP_INTOCABLE
@@ -65,6 +66,7 @@ class Reporte:
     plantilla: list[dict] = field(default_factory=list)
     lugares_libres: int = 0
     tope: int = 14
+    empates: list[dict] = field(default_factory=list)
 
 
 def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
@@ -107,6 +109,25 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     tm = t[t.jugador_id.isin(mis_ids)]
     al = aplicar_regla_duda(optima(tm), tm)
     idx = tm.set_index("jugador_id")
+
+    # Decisiones parejas: solo informan, no cambian la alineación.
+    try:
+        pts = empates_mod.pts_por_equipo(crudos.get("juegos"), crudos["calendario"],
+                                         TEMPORADA, semana)
+    except Exception:  # noqa: BLE001 — sin líneas, los empates salen igual
+        pts = {}
+        avisos.append("Sin líneas de apuestas: los empates salen sin el total del equipo.")
+    empates = [{
+        "tipo": e.tipo, "slot": e.slot,
+        "titular": idx.loc[e.titular, "nombre"],
+        "proy_titular": round(float(idx.loc[e.titular, "esperado"]), 1),
+        "alternativa": idx.loc[e.alternativa, "nombre"],
+        "proy_alternativa": round(float(idx.loc[e.alternativa, "esperado"]), 1),
+        "diferencia": e.diferencia,
+        "pts_titular": round(e.pts_titular, 1) if e.pts_titular is not None else None,
+        "pts_alternativa": (round(e.pts_alternativa, 1)
+                            if e.pts_alternativa is not None else None),
+    } for e in empates_mod.buscar(al, tm, pts)]
 
     alineacion = [{
         "slot": s, "jugador_id": j, "nombre": idx.loc[j, "nombre"], "pos": idx.loc[j, "pos"],
@@ -254,4 +275,5 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         reemplazos=remp, agencia=agencia, rol=rol, intercambios=propuestas, avisos=avisos,
         validado=estado_val["fuente"] if manda else None,
         acciones=lista, plantilla=plantilla_vista, lugares_libres=lugares_libres, tope=tope,
+        empates=empates,
     )
