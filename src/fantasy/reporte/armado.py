@@ -63,7 +63,7 @@ def _simulacion(crudos, t, tm, plantillas, liga, equipo_id, semana, ahora, ruta_
     previo = pd.read_csv(ruta_previo) if ruta_previo.exists() else None
     ids = pd.concat([tm, tr]).drop_duplicates("jugador_id")[["jugador_id", "pos"]]
     rol_semana = rol_pg.previo_a(rol_pg.leer(crudos), ids.assign(semana=semana), previo)
-    return en_vivo.preparar(tm, tr, al_rival, reales, rol_semana, art)
+    return en_vivo.preparar(tm, tr, al_rival, reales, rol_semana, art, ahora=ahora)
 
 
 class TemporadaTerminada(Exception):

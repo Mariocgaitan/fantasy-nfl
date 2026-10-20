@@ -95,3 +95,23 @@ def test_rival_con_titular_fuera_usa_su_optima():
                                                      "FLEX", "BANCA"], "bloqueado": False})
     al = en_vivo.alineacion_rival(t)
     assert 7 not in al.ids() and 8 in al.ids()
+
+
+def test_domingo_bloqueados_usan_reales_y_sin_fila_tras_el_partido_cuentan_0():
+    # 1: bloqueado con puntos reales → fijo. 2: bloqueado, partido hace 6 h y ESPN no trae fila
+    # (no jugó) → 0, no simulado. 3: bloqueado, partido en curso sin fila aún → se simula.
+    ahora = pd.Timestamp("2026-10-12 23:00", tz="UTC")
+    tm = pd.DataFrame({
+        "jugador_id": [1, 2, 3, 4], "pos": ["WR", "WR", "WR", "QB"],
+        "proy": [12.0, 14.0, 13.0, 18.0], "p_jugar": 1.0, "equipo_nfl_id": [1, 2, 3, 4],
+        "bloqueado": [True, True, True, False],
+        "inicio_utc": [ahora - pd.Timedelta(hours=6)] * 2 + [ahora - pd.Timedelta(hours=1),
+                                                            ahora + pd.Timedelta(hours=2)]})
+    reales = pd.DataFrame({"jugador_id": [1], "puntos": [21.5]})
+    rol = pd.DataFrame({"jugador_id": [1, 2, 3, 4], "pos": ["WR", "WR", "WR", "QB"]})
+    from fantasy.decision.alineacion import Alineacion
+    sim = en_vivo.preparar(tm, tm.iloc[0:0], Alineacion((), 0.0), reales, rol, art_prueba(),
+                           n=500, ahora=ahora)
+    assert (sim.puntos[:, sim.col[1]] == 21.5).all()
+    assert (sim.puntos[:, sim.col[2]] == 0.0).all()
+    assert sim.puntos[:, sim.col[3]].std() > 0

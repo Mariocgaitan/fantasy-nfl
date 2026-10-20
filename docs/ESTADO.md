@@ -43,6 +43,11 @@ alinear para maximizarla en decisiones parejas. Spec:
   cambiar la alineación**. Coincide con la exploración del desempate: ni la historia ni el rol
   del jugador predicen si supera a ESPN.
 - Mientras no exista `validacion/2025_pganar.json`, el reporte no muestra la sección.
+- **Ojo, 2025 está en disco:** las instantáneas en vivo (y los fixtures `tests/fixtures/sem04_*`)
+  traen proyecciones y puntos reales de 2025 (`seasonId 2025`). El código filtra por temporada,
+  así que no hay fuga, pero el sellado es de procedimiento: no explores 2025 con esos archivos.
+- El sello congela **todo `src/`**; en el reporte del domingo, un titular cuyo partido empezó
+  hace más de 4 h y del que ESPN no trae puntos cuenta 0 (no jugó).
 
 ## Empates y desempate por total de equipo (2026-10-19)
 
@@ -73,7 +78,8 @@ retomar si al final de 2026 la regla se recupera en vivo.
 4. **Prueba única de 2025 de la probabilidad de ganar** — solo con el visto bueno de Mario:
    `uv run fantasy varianza-registrar`, commit, y `uv run fantasy varianza-validar --sellado-final`.
 5. **Mejorar el modelo** solo si la validación en vivo también falla, y con un registro
-   nuevo. 2025 ya se usó para el modelo de puntos y (una vez) para la varianza.
+   nuevo. 2025 ya se usó para el modelo de puntos y queda reservada una sola vez para la
+   varianza (punto 4, aún sin correr).
 
 ## Menores pendientes (de las revisiones)
 

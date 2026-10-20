@@ -10,6 +10,9 @@ from fantasy.decision.alineacion import TITULARES, Alineacion, optima
 from fantasy.varianza import alinear, simular
 from fantasy.varianza.grupos import asignar
 
+# Si el partido empezó hace más que esto y ESPN no trae puntos del jugador, no jugó: cuenta 0.
+FIN_DE_PARTIDO = pd.Timedelta(hours=4)
+
 
 def tabla_rival(t: pd.DataFrame, plantillas: pd.DataFrame, rival_id: int,
                 ahora: pd.Timestamp) -> pd.DataFrame:
@@ -48,7 +51,7 @@ class Simulacion:
 
 def preparar(tm: pd.DataFrame, tr: pd.DataFrame, al_rival: Alineacion, reales: pd.DataFrame,
              rol_semana: pd.DataFrame, art, n: int = simular.N_SIM,
-             semilla: int = 0) -> Simulacion:
+             semilla: int = 0, ahora: pd.Timestamp | None = None) -> Simulacion:
     mios = [int(j) for j in tm.jugador_id]
     ids = mios + [j for j in al_rival.ids() if j not in set(mios)]
     f = pd.concat([tm, tr]).drop_duplicates("jugador_id").set_index("jugador_id").loc[ids]
@@ -59,6 +62,9 @@ def preparar(tm: pd.DataFrame, tr: pd.DataFrame, al_rival: Alineacion, reales: p
         "p_jugar": f.p_jugar.to_numpy(float), "equipo": f.equipo_nfl_id.to_numpy(),
         "real_fijo": [real.get(j, np.nan) if b else np.nan for j, b in zip(ids, bloq,
                                                                             strict=True)]})
+    if ahora is not None:
+        terminado = bloq & (f.inicio_utc + FIN_DE_PARTIDO <= ahora).fillna(False).to_numpy()
+        jug.loc[terminado & jug.real_fijo.isna().to_numpy(), "real_fijo"] = 0.0
     jug.loc[jug.real_fijo.notna(), "p_jugar"] = 1.0
     rasgos = rol_semana.drop(columns="pos").set_index("jugador_id").reindex(ids).fillna(0.0)
     jug["grupo"] = asignar(art.grupos, rasgos.reset_index(drop=True).assign(
