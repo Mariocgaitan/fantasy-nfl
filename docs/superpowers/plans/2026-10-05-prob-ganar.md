@@ -38,6 +38,12 @@ Siguiente paso al retomar (Task 4b, TDD):
    plano) y anotar el resultado. Si no cambia, quedarse con el ensayo ya hecho.
 4. Anotar en la spec (sección 1b) el ajuste y su motivo (tamaño de los datos, no el resultado).
 
+**Task 4b hecha (2026-10-19, commit `baaa391`).** Con el mínimo de 100 al elegir k, la tabla
+CRPS: QB 4.699/4.701/4.704/4.699/4.699 · RB 4.252/4.244/4.245/4.251/4.236 · WR
+4.756/4.750/4.759/4.783/4.795 · TE 3.935/3.921/3.935/3.935/3.935 (k = 1…5). Mayor mejora 0.4 %
+(< 1 % de empate) → **k = 1 en todas**; `modelos/varianza.joblib` quedó idéntico, así que vale el
+ensayo ya hecho (gana más ❌, porcentajes creíbles ✅). Anotado en la spec, sección 1b.
+
 **Después:** Task 10 (docs: `docs/ESTADO.md`, `README.md`; la decisión 25 ya está en
 `PROYECTO.md`), revisión final de la rama (subagente), PR. **El sellado de 2025
 (`varianza-registrar` + `varianza-validar --sellado-final`) solo con el visto bueno de Mario.**

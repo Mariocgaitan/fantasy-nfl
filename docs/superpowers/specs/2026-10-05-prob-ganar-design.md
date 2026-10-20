@@ -68,6 +68,14 @@ se mide en 2024 el **CRPS** medio de la distribución predicha frente al real (j
 relevantes, semanas 3–17). Gana el `k` de menor CRPS; empate (diferencia < 1%) → el menor
 `k`. Con `k = 1` el modelo es "solo posición".
 
+*Ajuste del 2026-10-19 (decisión de Mario del 2026-10-06, opción B):* durante la **elección
+de k** la cadena de respaldo de (c) exige 100 errores por celda, no 200. El motivo es el
+tamaño de los datos, no el resultado: con solo 2023 para formar grupos, 200 hacía caer todo
+`k ≥ 3` (y en QB/TE todo `k`) a la posición, así que la prueba no comparaba nada. El
+artefacto final sigue con 200. Resultado con la prueba justa: la mayor mejora sobre `k = 1`
+fue de 0.4 % (RB `k = 5`, TE `k = 2`), dentro del empate de 1 %, así que **`k = 1` en todas
+las posiciones** se mantiene y el artefacto no cambió.
+
 **c) Colecciones de errores (`varianza/errores.py`).** Error = puntos reales − proyección de
 ESPN de esa semana, jugadores relevantes (los de `modelo/evaluar.relevantes`). Se guarda por
 (posición, grupo, tramo de proyección). Tramos: terciles de la proyección por posición en los
