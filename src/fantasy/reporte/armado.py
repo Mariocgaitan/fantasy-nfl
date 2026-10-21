@@ -8,7 +8,9 @@ import pandas as pd
 from fantasy.config import (
     RUTA_MODELO,
     RUTA_MODELO_V2,
+    RUTA_ROL_PREVIO,
     RUTA_VALIDACION,
+    RUTA_VARIANZA,
     SEMANA_FINAL,
     TEMPORADA,
     UMBRAL_DISCREPA,
@@ -24,6 +26,10 @@ from fantasy.horario import ZONA, proximo_waiver, semana_objetivo
 from fantasy.ingesta import espn, nflverse
 from fantasy.modelo.estado import estado_validacion
 from fantasy.proyeccion.modelo import prediccion_modelo
+from fantasy.varianza import artefacto as artefacto_pg
+from fantasy.varianza import en_vivo
+from fantasy.varianza import rol as rol_pg
+from fantasy.varianza import validar as validar_pg
 
 DIAS = {"martes": "del martes", "viernes": "del viernes", "domingo": "del domingo"}
 DIAS_CORTOS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
@@ -42,6 +48,22 @@ def hora_sidney(v) -> str:
         return "descansa"
     local = v.tz_convert(ZONA)
     return f"{DIAS_CORTOS[local.weekday()]} {local:%H:%M}"
+
+
+def _simulacion(crudos, t, tm, plantillas, liga, equipo_id, semana, ahora, ruta_art,
+                ruta_previo):
+    art = artefacto_pg.cargar(ruta_art)
+    rival = espn.rival_de(liga, equipo_id, semana)
+    if rival is None:
+        raise ValueError(f"sin rival en la semana {semana}")
+    tr = en_vivo.tabla_rival(t, plantillas, rival, ahora)
+    al_rival = en_vivo.alineacion_rival(tr)
+    reales = espn.parsear_reales(crudos["proyecciones"], TEMPORADA)
+    reales = reales[reales.semana == semana]
+    previo = pd.read_csv(ruta_previo) if ruta_previo.exists() else None
+    ids = pd.concat([tm, tr]).drop_duplicates("jugador_id")[["jugador_id", "pos"]]
+    rol_semana = rol_pg.previo_a(rol_pg.leer(crudos), ids.assign(semana=semana), previo)
+    return en_vivo.preparar(tm, tr, al_rival, reales, rol_semana, art, ahora=ahora)
 
 
 class TemporadaTerminada(Exception):
@@ -66,12 +88,16 @@ class Reporte:
     plantilla: list[dict] = field(default_factory=list)
     lugares_libres: int = 0
     tope: int = 14
+    p_ganar: int | None = None
+    p_ganar_preliminar: bool = False
+    explicaciones_pg: list[str] = field(default_factory=list)
     empates: list[dict] = field(default_factory=list)
 
 
 def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
           avisos: list[str] | None = None, ruta_modelo: Path | None = None,
-          ruta_validacion: Path | None = None) -> Reporte:
+          ruta_validacion: Path | None = None, ruta_varianza: Path | None = None,
+          ruta_rol_previo: Path | None = None) -> Reporte:
     avisos = list(avisos or [])
     liga = crudos["liga"]
     plantillas = espn.parsear_plantillas(liga)
@@ -107,7 +133,28 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
     adp = espn.parsear_adp(liga)
     intocables = {j for j in mis_ids if adp.get(j, 200.0) < ADP_INTOCABLE}
     tm = t[t.jugador_id.isin(mis_ids)]
-    al = aplicar_regla_duda(optima(tm), tm)
+    al_optima = optima(tm)
+    al = aplicar_regla_duda(al_optima, tm)
+    p_ganar, explicaciones_pg = None, []
+    est_pg = validar_pg.estado(ruta_validacion or RUTA_VALIDACION,
+                               ruta_varianza or RUTA_VARIANZA)
+    if est_pg["paso_2"]:
+        try:
+            sim = _simulacion(crudos, t, tm, plantillas, liga, equipo_id, semana, ahora,
+                              ruta_varianza or RUTA_VARIANZA, ruta_rol_previo or RUTA_ROL_PREVIO)
+            if est_pg["paso_1"]:
+                elegida, p_opt = en_vivo.elegir(sim, tm)
+                nombres_tm = dict(zip(tm.jugador_id.astype(int), tm.nombre, strict=True))
+                explicaciones_pg = en_vivo.explicar(elegida, al_optima, p_opt, sim, nombres_tm)
+                al = aplicar_regla_duda(elegida, tm)
+            p_ganar = round(100 * sim.p(al))
+        except Exception as e:  # noqa: BLE001 — la simulación nunca bloquea el reporte
+            avisos.append(f"No se pudo calcular la probabilidad de ganar "
+                          f"({type(e).__name__}: {e}).")
+            al = aplicar_regla_duda(al_optima, tm)
+            explicaciones_pg = []
+    elif est_pg["existe"]:
+        avisos.append("La probabilidad de ganar no pasó la validación.")
     idx = tm.set_index("jugador_id")
 
     # Decisiones parejas: solo informan, no cambian la alineación.
@@ -275,5 +322,6 @@ def armar(crudos: dict, ahora: pd.Timestamp, tipo: str, equipo_id: int,
         reemplazos=remp, agencia=agencia, rol=rol, intercambios=propuestas, avisos=avisos,
         validado=estado_val["fuente"] if manda else None,
         acciones=lista, plantilla=plantilla_vista, lugares_libres=lugares_libres, tope=tope,
-        empates=empates,
+        p_ganar=p_ganar, p_ganar_preliminar=(tipo == "martes" and p_ganar is not None),
+        explicaciones_pg=explicaciones_pg, empates=empates,
     )

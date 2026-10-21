@@ -10,3 +10,5 @@ RUTA_MODELO = Path("modelos/modelo_v1.json")
 RUTA_MODELO_V2 = Path("modelos/modelo_v2.joblib")
 RUTA_VALIDACION = Path("validacion")
 UMBRAL_DISCREPA = 3.0  # puntos entre modelo y ESPN para marcar ⚑
+RUTA_VARIANZA = Path("modelos/varianza.joblib")
+RUTA_ROL_PREVIO = Path("modelos/rol_previo_2026.csv")  # lo genera varianza-validar

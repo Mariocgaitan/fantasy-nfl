@@ -36,6 +36,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "pandas" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "tzdata" },
 ]
 
@@ -50,6 +51,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "scikit-learn", specifier = ">=1.5" },
+    { name = "scipy", specifier = ">=1.11" },
     { name = "tzdata", specifier = ">=2024.1" },
 ]
 

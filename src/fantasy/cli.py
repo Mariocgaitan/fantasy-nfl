@@ -48,6 +48,21 @@ def _parser() -> argparse.ArgumentParser:
     va.add_argument("--raiz", type=Path, default=Path("historico"))
     vv = sub.add_parser("validar-en-vivo", help="aplica el criterio a 2026 con las instantáneas")
     vv.add_argument("--datos", type=Path, required=True)
+    vc = sub.add_parser("varianza-construir",
+                        help="grupos por rol (k con 2024) y colecciones de errores 2023–2024")
+    vc.add_argument("--raiz", type=Path, default=Path("historico"))
+    vc.add_argument("--salida", type=Path, default=Path("modelos/varianza.joblib"))
+    ve = sub.add_parser("varianza-ensayo", help="la prueba de ligas simuladas sobre 2024")
+    ve.add_argument("--raiz", type=Path, default=Path("historico"))
+    ve.add_argument("--artefacto", type=Path, default=Path("modelos/varianza.joblib"))
+    ve.add_argument("--ligas", type=int, default=200)
+    vr = sub.add_parser("varianza-registrar", help="congela el registro antes del sellado")
+    vr.add_argument("--artefacto", type=Path, default=Path("modelos/varianza.joblib"))
+    vs = sub.add_parser("varianza-validar",
+                        help="corrida única sobre 2025 (requiere --sellado-final)")
+    vs.add_argument("--sellado-final", action="store_true")
+    vs.add_argument("--raiz", type=Path, default=Path("historico"))
+    vs.add_argument("--artefacto", type=Path, default=Path("modelos/varianza.joblib"))
     return p
 
 
@@ -59,6 +74,88 @@ def main(argv: list[str] | None = None, *, entorno: dict | None = None, enviar_f
             nfl = bajar_nflverse(t) | {"juegos": nflverse.bajar_juegos((t,))}
             historico.guardar_historico(a.raiz, t, historico.bajar_espn_historico(t), nfl)
             print(f"Histórico {t} guardado en {a.raiz}")
+        return 0
+    if a.comando == "varianza-ensayo":
+        import json
+
+        from fantasy.ingesta import historico
+        from fantasy.varianza import artefacto, datos, ligas, rol, validar
+        c23, c24 = (historico.cargar_historico(a.raiz, t) for t in (2023, 2024))
+        f23 = datos.para_construir(datos.tabla(c23, 2023))
+        t24 = datos.tabla(c24, 2024, previo=rol.promedio_temporada(rol.leer(c23)))
+        # Mismo k que el artefacto, pero colecciones solo con 2023: 2024 queda fuera de muestra.
+        art = artefacto.construir(f23, f23, artefacto.cargar(a.artefacto).k)
+        res = validar.criterio(ligas.temporada(t24, art, n_ligas=a.ligas))
+        print(json.dumps(res, indent=1, ensure_ascii=False))
+        return 0
+    if a.comando == "varianza-registrar":
+        import json
+        import subprocess
+
+        from fantasy.modelo.estado import huella
+        from fantasy.varianza import artefacto
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                                check=False, text=True).stdout.strip()
+        registro = {"commit": commit, "sha256": huella(a.artefacto),
+                    "artefacto": a.artefacto.as_posix(), "k": artefacto.cargar(a.artefacto).k,
+                    "ligas": 200, "n_sim": 10_000, "semilla": 0, "margen": 10.0,
+                    "fecha": datetime.now(UTC).isoformat()}
+        destino = RUTA_VALIDACION / "registro_pganar.json"
+        destino.write_text(json.dumps(registro, indent=1, ensure_ascii=False), encoding="utf-8")
+        print(f"Registro escrito en {destino}. Haz commit antes de validar.")
+        return 0
+    if a.comando == "varianza-validar":
+        if not a.sellado_final:
+            print("La validación de la varianza corre una sola vez sobre 2025 y requiere el "
+                  "visto bueno de Mario. Repite con --sellado-final.", file=sys.stderr)
+            return 2
+        import json
+        import subprocess
+
+        from fantasy.config import RUTA_ROL_PREVIO
+        from fantasy.ingesta import historico
+        from fantasy.varianza import datos, rol, validar
+        registro = json.loads((RUTA_VALIDACION / "registro_pganar.json")
+                              .read_text(encoding="utf-8"))
+        guardado = {}
+
+        def obtener_2025():
+            c24 = historico.cargar_historico(a.raiz, 2024)
+            crudos = {"proyecciones": historico.bajar_espn_historico(2025,
+                                                                     permitir_sellada=True)}
+            crudos |= bajar_nflverse(2025)
+            guardado["crudos"] = crudos
+            return datos.tabla(crudos, 2025, previo=rol.promedio_temporada(rol.leer(c24)))
+
+        def git(*args):
+            return subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+
+        def git_limpio():
+            r = git("status", "--porcelain")
+            return r.returncode == 0 and r.stdout.strip() == ""
+
+        res = validar.validar_sellado(registro, a.artefacto, obtener_2025,
+                                      RUTA_VALIDACION / validar.RESULTADO,
+                                      git_limpio=git_limpio,
+                                      src_igual=lambda c: validar.codigo_igual(c, git))
+        # El "año anterior" del rol en vivo de 2026.
+        rol.promedio_temporada(rol.leer(guardado["crudos"])).to_csv(RUTA_ROL_PREVIO,
+                                                                     index=False)
+        print(json.dumps(res, indent=1, ensure_ascii=False))
+        return 0
+    if a.comando == "varianza-construir":
+        from fantasy.ingesta import historico
+        from fantasy.varianza import artefacto, datos, grupos, rol
+        c23, c24 = (historico.cargar_historico(a.raiz, t) for t in (2023, 2024))
+        t23 = datos.tabla(c23, 2023)
+        t24 = datos.tabla(c24, 2024, previo=rol.promedio_temporada(rol.leer(c23)))
+        f23, f24 = datos.para_construir(t23), datos.para_construir(t24)
+        k, tabla_crps = grupos.elegir_k(f23, f24, minimo_celda=grupos.MINIMO_ELECCION)
+        print(tabla_crps.to_string(index=False))
+        print(f"k elegido: {k}")
+        art = artefacto.construir(f23, pd.concat([f23, f24], ignore_index=True), k)
+        artefacto.guardar(art, a.salida)
+        print(f"Artefacto guardado en {a.salida}")
         return 0
     if a.comando == "validar-en-vivo":
         import json

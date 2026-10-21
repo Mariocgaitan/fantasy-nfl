@@ -12,7 +12,7 @@ y antes de la spec (`docs/superpowers/specs/2026-09-26-sistema-fantasy-design.md
 | 1. Intercambios + modelo v1 | **En producción** | El reporte del martes propone hasta 5 intercambios (uno por rival). La agencia libre no suelta jugadores con ADP < 60. |
 | Empates en el reporte | **En producción al fusionar la rama `desempate`** | Sección "Decisiones parejas": empate (≤ 1 punto) y casi empate (1–2) entre un titular y su mejor suplente, con el total esperado de su equipo según las apuestas. Solo informa. |
 | 2. Ejecución autorizada | **Sin empezar** | Botones → issue de GitHub → escribir en ESPN; vigilante de inactivos. |
-| 4. Probabilidad de ganar | **En curso — rama `prob-ganar` (sin fusionar)** | Ver "Trabajo en curso" abajo. |
+| 4. Probabilidad de ganar | **Construida; falta la prueba única de 2025** | Ver "Probabilidad de ganar" abajo. |
 | 3. Modelo serio + validación | **Hecha; el modelo NO pasó** | Modelo v2 (ridge sobre la corrección a ESPN calibrada, con contexto del partido). La corrida sellada de 2025 se hizo una vez y falló (ver abajo). |
 
 Decide **ESPN** (sin calibrar en el reporte, porque no hay modelo validado). El modelo v2
@@ -27,18 +27,27 @@ RB, WR y TE peor. **No pasa** la decisión 19. La mejora de 2024 (−0.02) era r
 Por la decisión 23, el plan B es la **validación en vivo 2026** con el mismo modelo
 congelado (`modelos/modelo_v2.joblib`, huella en `validacion/registro.json`).
 
-## Trabajo en curso: probabilidad de ganar (rama `prob-ganar`)
+## Probabilidad de ganar (decisión 25)
 
-Tras perder la semana 4, el sistema calculará la **probabilidad de ganar** contra el rival real y,
-si pasa una validación única sobre 2025 (decisión 25), alineará para maximizarla en decisiones
-parejas. Spec: `docs/superpowers/specs/2026-10-05-prob-ganar-design.md`. Plan:
-`docs/superpowers/plans/2026-10-05-prob-ganar.md` — **su sección "Estado de ejecución" dice
-exactamente dónde quedó y el siguiente paso** (Task 4b: hacer justa la prueba de grupos por rol,
-opción B que eligió Mario el 2026-10-06). Tasks 1–9 hechas; faltan 4b, docs, revisión final y PR.
-El sellado de 2025 solo con el visto bueno de Mario. Mientras no se fusione, el reporte de
-producción (que corre desde `main`) no cambia.
+El reporte puede calcular la **probabilidad de ganar** contra el rival real (errores reales de
+ESPN por posición, compañeros correlacionados, Monte Carlo) y, si pasa la prueba única de 2025,
+alinear para maximizarla en decisiones parejas. Spec:
+`docs/superpowers/specs/2026-10-05-prob-ganar-design.md`; plan:
+`docs/superpowers/plans/2026-10-05-prob-ganar.md`.
 
-Para retomar: `git checkout prob-ganar` y leer esa sección del plan.
+- **Grupos por rol:** con la prueba justa (mínimo de 100 errores por celda al elegir k) la mayor
+  mejora fue 0.4 % (< 1 % de empate) → **k = 1 en todas las posiciones** ("solo posición").
+- **Ensayo 2024** (desarrollo, 200 ligas): **gana más ❌** (delta 0.0; la alineación cambió en 23
+  de 24 000 enfrentamientos) · **porcentajes creíbles ✅** (máx. ±2.3 puntos por tramo).
+- **Lo esperable en 2025:** que solo pase lo segundo → el reporte **muestra el porcentaje sin
+  cambiar la alineación**. Coincide con la exploración del desempate: ni la historia ni el rol
+  del jugador predicen si supera a ESPN.
+- Mientras no exista `validacion/2025_pganar.json`, el reporte no muestra la sección.
+- **Ojo, 2025 está en disco:** las instantáneas en vivo (y los fixtures `tests/fixtures/sem04_*`)
+  traen proyecciones y puntos reales de 2025 (`seasonId 2025`). El código filtra por temporada,
+  así que no hay fuga, pero el sellado es de procedimiento: no explores 2025 con esos archivos.
+- El sello congela **todo `src/`**; en el reporte del domingo, un titular cuyo partido empezó
+  hace más de 4 h y del que ESPN no trae puntos cuenta 0 (no jugó).
 
 ## Empates y desempate por total de equipo (2026-10-19)
 
@@ -66,8 +75,11 @@ retomar si al final de 2026 la regla se recupera en vivo.
 3. **Fase 2 (ejecución en ESPN).** Empieza con una prueba corta: Mario guarda `espn_s2` y
    `SWID` en `C:\Users\mario\.fantasy-nfl\cookies.txt` (fuera del repo) y autoriza una
    acción concreta. Diseño en la spec, sección 5. Pendiente de brainstorming detallado.
-4. **Mejorar el modelo** solo si la validación en vivo también falla, y con un registro
-   nuevo (nunca reusar 2025, ya está gastada).
+4. **Prueba única de 2025 de la probabilidad de ganar** — solo con el visto bueno de Mario:
+   `uv run fantasy varianza-registrar`, commit, y `uv run fantasy varianza-validar --sellado-final`.
+5. **Mejorar el modelo** solo si la validación en vivo también falla, y con un registro
+   nuevo. 2025 ya se usó para el modelo de puntos y queda reservada una sola vez para la
+   varianza (punto 4, aún sin correr).
 
 ## Menores pendientes (de las revisiones)
 
@@ -106,8 +118,12 @@ el reporte no sabe) y lo anota como pendiente.
 
 ## Comandos
 
-    uv run pytest -q                       # ~150 pruebas, ~2.5 min
+    uv run pytest -q                       # ~255 pruebas, ~4 min
     uv run fantasy reporte --tipo martes --salida salida --sin-correo --forzar
     uv run fantasy historico | entrenar | evaluar --temporada 2024 | seleccionar
     uv run fantasy validar-en-vivo --datos <rama datos>
     # `fantasy validar --sellado-final` ya se corrió: se niega a correr otra vez.
+    uv run fantasy varianza-construir      # grupos, errores y correlaciones (2023–2024)
+    uv run fantasy varianza-ensayo         # ligas simuladas sobre 2024 (~25 min)
+    uv run fantasy varianza-registrar      # congela el registro antes del sellado
+    uv run fantasy varianza-validar --sellado-final   # 2025, una sola vez (visto bueno de Mario)
